@@ -1,0 +1,327 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f4f4f8;
+  color: #222;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+}
+
+header {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.content-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+}
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.sidebar {
+  flex: 0 0 250px;
+  background-color: #2d3e50;
+  color: white;
+  padding: 1rem;
+}
+
+main {
+  flex: 1;
+  padding: 2rem;
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.slider-label {
+  flex: 1;
+}
+
+.slider {
+  width: 150px;
+}
+
+.reading-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  line-height: 2.2rem;
+  margin: 2rem 0;
+  min-height: 3rem;
+  transition: all 0.3s ease;
+}
+
+.highlight {
+  background: #ffe066;
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: all 0.3s ease;
+}
+
+.recent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recent-list li {
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  background-color: #fafafa; /* Slightly off-white background */
+  margin-bottom: 0.5rem;
+  position: relative;
+  overflow: visible;
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+  z-index: 0;
+  color: #333; /* Ensure text color is dark for contrast */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Add subtle shadow to separate the list item */
+}
+#category-filter {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f9f9f9;
+  color: #222; /* darker text */
+  margin-top: 8px;
+  margin-bottom: 12px;
+  transition: 0.2s ease;
+}
+#category-filter:hover {
+  border-color: #888;
+  background: #fff;
+}
+#category-manager {
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f4f6f8;
+  color: #222; /* darker text for better readability */
+}
+#category-manager h3 {
+  margin-top: 0;
+  font-size: 16px;
+  text-align: center;
+  color: #111; /* darker heading */
+}
+#category-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#category-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #222; /* darker category text */
+}
+#category-list li button {
+  background: #ff6666;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+#category-list li button:hover {
+  background: #e44;
+}
+#recent-list li {
+  background: #fff;
+  padding: 8px;
+  margin-bottom: 6px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  color: #222; /* ensure document text is darker */
+}
+
+.recent-list li span {
+  display: block; /* Ensure each span is on its own line */
+  margin-bottom: 0.2rem;
+  word-wrap: break-word;
+}
+#recent-list li span.doc-title {
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: #111; /* even darker for titles */
+}
+#recent-list li span.doc-title:hover {
+  color: #0066cc;
+  text-decoration: underline;
+}
+
+.recent-list li .category {
+  font-weight: bold; /* Style category for visibility */
+  color: #2d3e50; /* Dark color for category */
+}
+#recent-list li span.category-label {
+  font-size: 12px;
+  color: #444; /* slightly lighter but still visible */
+  margin-bottom: 6px;
+}
+
+/* Hover effect */
+.recent-list li:hover {
+  background-color: #f0f0f0; /* Slightly darker background on hover */
+}
+
+/* Delete button style */
+#recent-list li button {
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+#recent-list li button:nth-child(3) {
+  background: #4caf50;
+  color: #fff;
+}
+
+#recent-list li button:nth-child(4) {
+  background: #ff4444;
+  color: #fff;
+}
+
+#recent-list li button:hover {
+  opacity: 0.85;
+}
+
+/* Ensure button is well-separated */
+.recent-list li button {
+  margin-left: 10px; /* Add margin to prevent button touching the text */
+}
+
+/* Style the text span with overflow handling */
+.recent-list li span {
+  overflow: hidden;
+  text-overflow: ellipsis; /* Adds ellipsis if the text is too long */
+  white-space: nowrap; /* Prevents text from breaking into multiple lines */
+}
+
+.recent-list li span {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+  width: auto; /* Don't let buttons take full width */
+  max-width: 100px; /* Set max width for the buttons to prevent elongation */
+  min-width: 60px; /* Set a minimum width for consistency */
+  box-sizing: border-box;
+  text-align: center;
+}
+button:disabled {
+  background: #aaa;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+input[type="text"],
+input[type="file"],
+button {
+  margin-bottom: 10px;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input[type="text"] {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+label[for="file-input"] {
+  cursor: pointer;
+  color: #2d3e50;
+  text-decoration: underline;
+}
+
+#code-display {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#code-display pre {
+  margin: 0;
+  padding: 0.5rem;
+  background: #f4f4f8;
+  border-radius: 4px;
+}
+
+#code-display code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  display: block;
+}
+
+#code-display code span {
+  display: inline-block;
+  padding: 0.2rem;
+  border-radius: 4px;
+}
