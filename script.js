@@ -56,54 +56,49 @@ if (!recentList || !categoryList) {
 
 document.getElementById("read-selection-btn").addEventListener("click", () => {
   const textarea = document.getElementById("text-input");
-  const fullText = textarea.value.trim();
   const selectionStart = textarea.selectionStart;
   const selectionEnd = textarea.selectionEnd;
-
-  textarea.blur(); // ✅ Avoid mobile focus issues
 
   if (selectionStart === selectionEnd) {
     alert("Please select some text inside the text box.");
     return;
   }
 
-  const selectedText = fullText.substring(selectionStart, selectionEnd).trim();
+  const selectedText = textarea.value
+    .substring(selectionStart, selectionEnd)
+    .trim();
   if (!selectedText) {
     alert("Selected text is empty.");
     return;
   }
 
-  // Normalize text for matching
-  const normalize = (str) =>
-    str
-      .replace(/[.,!?;:()\[\]{}"“”‘’]/g, "")
-      .replace(/[\n\r]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .map((w) => w.toLowerCase());
+  // ✅ Treat selected text as its own reading session
+  words = selectedText
+    .replace(/[\n\r]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ");
 
-  const allWords = normalize(fullText);
-  const selectedWords = normalize(selectedText);
+  currentWord = 0;
+  showWord();
 
-  words = allWords; // ✅ Reset global words
+  // Disable controls while reading
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  textInput.disabled = true;
+  wpmSlider.disabled = true;
 
-  // Try to find selection in full text
-  let index = -1;
-  for (let i = 0; i <= allWords.length - selectedWords.length; i++) {
-    if (selectedWords.every((w, j) => allWords[i + j] === w)) {
-      index = i;
-      break;
+  const interval = 60000 / parseInt(wpmSlider.value, 10);
+  if (readingInterval) clearInterval(readingInterval);
+
+  readingInterval = setInterval(() => {
+    currentWord += chunkSize;
+    if (currentWord >= words.length) {
+      stopReading();
+    } else {
+      showWord();
     }
-  }
-
-  if (index !== -1) {
-    startReading(index); // ✅ Start at found index
-  } else {
-    // ✅ Safe fallback → just read selection directly
-    words = selectedWords;
-    startReading(0);
-  }
+  }, interval);
 });
 
 document.getElementById("resume-btn").addEventListener("click", () => {
