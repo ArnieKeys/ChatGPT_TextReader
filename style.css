@@ -77,6 +77,20 @@ textarea {
   box-sizing: border-box;
 }
 
+#reading-area {
+  margin-bottom: 1rem; /* add spacing before controls */
+  padding: 1rem;
+  background: #fff;
+  text-align: center;
+  min-height: 60px; /* keeps area visible even when empty */
+}
+
+/* Ensure controls stay stacked below */
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 /* Highlighted words */
 .reading-area {
   /* Removed sticky positioning */
