@@ -373,38 +373,33 @@ function startReadingFromIndex(index) {
 function startReading(fromIndex = null) {
   const text = textInput.value.trim();
   if (!text) return;
+
   saveRecentDoc(text);
+
   words = text
-    .replace(/[\n\r]+/g, " ") // Replace newlines with space
-    .replace(/\s+/g, " ") // Collapse multiple spaces
+    .replace(/[\n\r]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
     .split(" ");
 
-  // Determine starting index
-  if (fromIndex !== null && fromIndex >= 0 && fromIndex < words.length) {
-    currentWord = fromIndex;
-  } else {
-    // Default: start from 0
-    currentWord = 0;
-  }
+  currentWord = fromIndex !== null ? fromIndex : 0;
 
-  // Skip ahead by chunkSize if starting fresh
-  currentWord += chunkSize;
+  // ✅ Show only the chunk but keep controls visible
+  readingArea.style.maxHeight = "150px";
+  readingArea.style.overflow = "hidden";
 
-  // Show the current chunk
   showWord();
 
-  // Disable controls
   startBtn.disabled = true;
   stopBtn.disabled = false;
   textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // Set interval for reading
   const interval = 60000 / parseInt(wpmSlider.value, 10);
   if (readingInterval) clearInterval(readingInterval);
+
   readingInterval = setInterval(() => {
-    currentWord += chunkSize; // Advance by chunk size each interval
+    currentWord += chunkSize;
     if (currentWord >= words.length) {
       stopReading();
     } else {
@@ -417,7 +412,7 @@ function stopReading() {
   clearInterval(readingInterval);
   readingInterval = null;
 
-  // ✅ Re-enable all controls
+  // ✅ Re-enable controls
   startBtn.disabled = false;
   stopBtn.disabled = true;
   textInput.disabled = false;
@@ -426,17 +421,21 @@ function stopReading() {
   // ✅ Restore full text
   showFullText();
 
-  // ✅ Reset reading area styles so it no longer traps scroll
+  // ✅ Reset any reading-specific styles
+  readingArea.style.position = "relative";
   readingArea.style.maxHeight = "none";
-  readingArea.style.overflowY = "visible";
-  readingArea.style.position = "static";
+  readingArea.style.minHeight = "auto";
+  readingArea.style.overflow = "visible";
 
-  // ✅ Re-enable page scrolling on mobile
+  // ✅ Make sure the whole page can scroll again
   document.body.style.overflow = "auto";
 
   // ✅ Save position for resume
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
   document.getElementById("resume-btn").disabled = false;
+
+  // ✅ Scroll back to top so controls are visible
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showWord() {
