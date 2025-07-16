@@ -401,7 +401,7 @@ function startReading(fromIndex = null) {
   wpmSlider.disabled = true;
 
   // Restrict reading area height so highlighting is visible and no scroll needed
-  readingArea.style.maxHeight = "100px"; // or remove this line if not needed
+  // readingArea.style.maxHeight = "100px"; // or remove this line if not needed
   readingArea.style.overflowY = "hidden";
 
   // Set interval for reading
@@ -420,17 +420,17 @@ function startReading(fromIndex = null) {
 function stopReading() {
   clearInterval(readingInterval);
   readingInterval = null;
+
   startBtn.disabled = false;
   stopBtn.disabled = true;
   textInput.disabled = false;
   wpmSlider.disabled = false;
 
-  // Show full text with scroll enabled
-  showFullText();
-
-  // Allow reading area to expand and scroll
-  readingArea.style.maxHeight = "50vh"; // or any comfortable max height
+  // Reset reading area to show full text and allow scrolling
+  readingArea.style.maxHeight = "none";
   readingArea.style.overflowY = "auto";
+
+  showFullText();
 
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
   document.getElementById("resume-btn").disabled = false;
