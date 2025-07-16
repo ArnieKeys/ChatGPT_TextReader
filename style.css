@@ -67,11 +67,9 @@ textarea {
 
 /* Highlighted words */
 .reading-area {
-  position: sticky;
-  top: 0;
+  /* Removed sticky positioning */
   background: white;
   padding: 0.8rem;
-  z-index: 100;
   font-size: 1.2rem;
   border-bottom: 1px solid #ddd;
 
@@ -89,12 +87,13 @@ textarea {
 
 /* === Controls & Sliders === */
 .controls {
-  position: sticky;
-  top: 0;
+  /* Removed sticky positioning */
   background: #fff; /* keeps background solid */
   padding: 10px;
-  z-index: 10; /* always on top */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* slight shadow */
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .controls button,
@@ -347,17 +346,15 @@ label[for="file-input"] {
     padding: 0.5rem;
   }
 
-  /* Sticky reading area stays visible */
-  #reading-area {
-    max-height: 300px; /* Set a comfortable height */
-    overflow-y: auto; /* Enable vertical scrolling */
-    padding: 10px;
-    border: 1px solid #ccc;
-    background: #fafafa;
-    font-size: 1.1em;
-    line-height: 1.5;
-    white-space: normal;
-    margin-bottom: 1rem;
+  /* Reading area */
+  .reading-area {
+    background: white;
+    padding: 0.8rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #ddd;
+    overflow-y: auto;
+    max-height: 50vh;
+    white-space: pre-wrap;
   }
 
   /* Compact textarea */
@@ -366,9 +363,14 @@ label[for="file-input"] {
     font-size: 0.95rem;
   }
 
-  /* Compact controls */
+  /* Controls */
   .controls {
-    gap: 0.4rem;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .controls button {
@@ -387,6 +389,8 @@ label[for="file-input"] {
     padding: 8px;
   }
 }
+
+/* Document buttons */
 .doc-buttons {
   display: flex;
   flex-direction: column; /* stacked vertically */
