@@ -344,8 +344,8 @@ function removeRecentDoc(index) {
 }
 
 function startReadingFromIndex(index) {
+  // If words are not loaded yet, rebuild from textarea
   if (!words.length) {
-    // If words array isn’t set yet, rebuild from textarea
     const text = textInput.value.trim();
     if (!text) return;
     words = text
@@ -357,15 +357,15 @@ function startReadingFromIndex(index) {
 
   if (index < 0 || index >= words.length) return;
 
-  currentWord = index;
-  startReading(currentWord); // reuse main logic
+  // Reuse main reading logic
+  startReading(index);
 }
 
 function startReading(fromIndex = null) {
   const text = textInput.value.trim();
   if (!text) return;
 
-  // Save to recent docs if it’s a new session
+  // Save to recent docs only if it's a fresh read
   saveRecentDoc(text);
 
   // Prepare words array
@@ -382,56 +382,22 @@ function startReading(fromIndex = null) {
     currentWord = 0;
   }
 
-  // ✅ Show the initial chunk
+  // Show initial chunk
   showWord();
 
-  // ✅ Disable UI during reading
+  // Disable UI during reading
   startBtn.disabled = true;
   stopBtn.disabled = false;
   textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // ✅ Unlock reading area for scrolling during reading
+  // Ensure reading area remains scrollable on mobile
   readingArea.style.maxHeight = "200px";
   readingArea.style.overflowY = "auto";
 
-  // ✅ Set reading interval
+  // Reading interval
   const interval = 60000 / parseInt(wpmSlider.value, 10);
   if (readingInterval) clearInterval(readingInterval);
-  readingInterval = setInterval(() => {
-    currentWord += chunkSize; // advance by chunk size
-    if (currentWord >= words.length) {
-      stopReading();
-    } else {
-      showWord();
-    }
-  }, interval);
-}
-
-function startReading(fromIndex = null) {
-  const text = textInput.value.trim();
-  if (!text) return;
-
-  saveRecentDoc(text);
-
-  words = text
-    .replace(/[\n\r]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ");
-
-  currentWord = fromIndex !== null ? fromIndex : 0;
-
-  showWord();
-
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  textInput.disabled = true;
-  wpmSlider.disabled = true;
-
-  const interval = 60000 / parseInt(wpmSlider.value, 10);
-  if (readingInterval) clearInterval(readingInterval);
-
   readingInterval = setInterval(() => {
     currentWord += chunkSize;
     if (currentWord >= words.length) {
@@ -443,34 +409,26 @@ function startReading(fromIndex = null) {
 }
 
 function stopReading() {
+  // Stop reading interval
   clearInterval(readingInterval);
   readingInterval = null;
 
-  // ✅ Re-enable all controls
+  // Re-enable controls
   startBtn.disabled = false;
   stopBtn.disabled = true;
   textInput.disabled = false;
   wpmSlider.disabled = false;
 
-  // ✅ Restore full text so user can scroll normally
+  // Restore full text view
   showFullText();
 
-  // ✅ FULLY reset readingArea style so it behaves normally again
-  readingArea.style.position = "static";
-  readingArea.style.maxHeight = "";
-  readingArea.style.minHeight = "";
-  readingArea.style.height = "auto";
-  readingArea.style.overflow = "visible";
+  // ✅ Allow full scrolling again
+  readingArea.style.maxHeight = "none";
+  readingArea.style.overflowY = "auto";
 
-  // ✅ Unlock page scrolling
-  document.body.style.overflow = "auto";
-
-  // ✅ Save last position for resume
+  // Save current position for resume
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
   document.getElementById("resume-btn").disabled = false;
-
-  // ✅ Ensure you can see the controls again
-  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showWord() {
