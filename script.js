@@ -266,6 +266,7 @@ function renderRecentDocs(docs = recentDocs) {
   docs.forEach((doc, idx) => {
     const li = document.createElement("li");
 
+    // ✅ Clickable title
     const span = document.createElement("span");
     span.textContent = doc.text.slice(0, 40) + "...";
     span.classList.add("doc-title");
@@ -274,14 +275,21 @@ function renderRecentDocs(docs = recentDocs) {
       updateCodeView(doc.text);
     });
 
+    // ✅ Category label
     const catLabel = document.createElement("span");
     catLabel.classList.add("category-label");
-    catLabel.textContent = `(${doc.category})`;
+    catLabel.textContent = `(${doc.category || "Uncategorized"})`;
 
+    // ✅ Create a wrapper for buttons (flex row)
+    const btnContainer = document.createElement("div");
+    btnContainer.classList.add("doc-buttons");
+
+    // ✅ Save button
     const saveBtn = document.createElement("button");
     saveBtn.textContent = "Save to Category";
     saveBtn.addEventListener("click", () => saveDocumentToCategory(doc.text));
 
+    // ✅ Delete button
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
     delBtn.addEventListener("click", () => {
@@ -290,10 +298,15 @@ function renderRecentDocs(docs = recentDocs) {
       }
     });
 
+    // ✅ Append buttons inside container
+    btnContainer.appendChild(saveBtn);
+    btnContainer.appendChild(delBtn);
+
+    // ✅ Append everything to the list item
     li.appendChild(span);
     li.appendChild(catLabel);
-    li.appendChild(saveBtn);
-    li.appendChild(delBtn);
+    li.appendChild(btnContainer);
+
     recentList.appendChild(li);
   });
 }

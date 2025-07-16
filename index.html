@@ -5,67 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2d3e50" />
     <title>Text Reader</title>
+
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css" />
-    <!-- Prism Tomorrow Theme (dark mode style) -->
+
+    <!-- Prism (for code highlighting) -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
     />
-    <!-- Prism core and HTML syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-html.min.js"></script>
+
+    <!-- PWA manifest -->
     <link rel="manifest" href="manifest.json" />
   </head>
   <body>
     <div class="layout">
+      <!-- ✅ Sticky Header -->
       <header>
         <h1>Text Reader</h1>
       </header>
+
       <div class="content-area">
-        <!-- Sidebar for recent docs, category, tags, search -->
-        <aside class="sidebar">
-          <h2>Recent Documents</h2>
-          <!-- <input type="text" id="search-input" placeholder="Search..." /> -->
-          <ul class="recent-list" id="recent-list"></ul>
-
-          <!-- Category Management -->
-          <div>
-            <label>Category:</label>
-            <input
-              type="text"
-              id="category-input"
-              placeholder="Enter category"
-            />
-          </div>
-          <button id="add-category-btn">Add Category</button>
-          <select id="category-filter">
-            <option value="">All Categories</option>
-            <!-- Categories will be dynamically populated -->
-          </select>
-          <div id="category-manager">
-            <h3>Manage Categories</h3>
-            <ul id="category-list"></ul>
-          </div>
-        </aside>
-
-        <!-- Main content area for text manipulation and reading controls -->
+        <!-- ✅ Main content FIRST (for mobile priority) -->
         <main>
+          <!-- 🔹 Reading area at the top for immediate visibility -->
+          <div class="reading-area" id="reading-area">
+            <!-- Highlighted text appears here -->
+          </div>
+
+          <!-- 🔹 Controls for loading & reading -->
           <div class="controls">
             <label for="file-input">Load from file</label>
             <input type="file" id="file-input" accept=".txt" />
             <button id="paste-btn">Paste Text</button>
             <button id="start-btn">Start Reading</button>
             <button id="stop-btn" disabled>Stop</button>
-            <button id="resume-btn" disabled>Resume Reading</button>
-            <button id="read-selection-btn">Read from Selection</button>
+            <button id="resume-btn" disabled>Resume</button>
+            <button id="read-selection-btn">Read Selection</button>
+
+            <!-- Assistive toggle -->
             <label class="assistive-toggle">
               <input type="checkbox" id="assistive-toggle" /> Assistive Mode
             </label>
           </div>
+
+          <!-- 🔹 Text input box -->
           <textarea
             id="text-input"
             placeholder="Paste or load your text here..."
           ></textarea>
+
+          <!-- 🔹 Reading speed and chunk sliders -->
           <div class="controls">
             <span class="slider-label">Words per minute:</span>
             <input
@@ -78,6 +70,7 @@
             />
             <span id="wpm-value">200</span>
           </div>
+
           <div class="controls">
             <span class="slider-label">Words per chunk:</span>
             <input
@@ -90,20 +83,50 @@
             />
             <span id="chunk-value">1</span>
           </div>
-          <div class="reading-area" id="reading-area"></div>
+
+          <!-- 🔹 Code viewer section -->
           <section>
             <h2>Code Viewer</h2>
             <pre><code id="code-display" class="language-html"></code></pre>
           </section>
         </main>
+
+        <!-- ✅ Sidebar with recent docs & categories -->
+        <aside class="sidebar">
+          <h2>Recent Documents</h2>
+          <ul class="recent-list" id="recent-list"></ul>
+
+          <!-- Category input -->
+          <div>
+            <label>Category:</label>
+            <input
+              type="text"
+              id="category-input"
+              placeholder="Enter category"
+            />
+          </div>
+          <button id="add-category-btn">Add Category</button>
+
+          <!-- Category filter dropdown -->
+          <select id="category-filter">
+            <option value="">All Categories</option>
+            <!-- Dynamic categories here -->
+          </select>
+
+          <!-- Category Manager -->
+          <div id="category-manager">
+            <h3>Manage Categories</h3>
+            <ul id="category-list"></ul>
+          </div>
+        </aside>
       </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-html.min.js"></script>
+
+    <!-- ✅ Scripts -->
     <script src="script.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service_worker.js");
+        navigator.serviceWorker.register("service-worker.js");
       }
     </script>
   </body>
