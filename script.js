@@ -400,10 +400,6 @@ function startReading(fromIndex = null) {
   textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // Restrict reading area height so highlighting is visible and no scroll needed
-  // readingArea.style.maxHeight = "100px"; // or remove this line if not needed
-  readingArea.style.overflowY = "hidden";
-
   // Set interval for reading
   const interval = 60000 / parseInt(wpmSlider.value, 10);
   if (readingInterval) clearInterval(readingInterval);
@@ -421,17 +417,24 @@ function stopReading() {
   clearInterval(readingInterval);
   readingInterval = null;
 
+  // ✅ Re-enable all controls
   startBtn.disabled = false;
   stopBtn.disabled = true;
   textInput.disabled = false;
   wpmSlider.disabled = false;
 
-  // Reset reading area to show full text and allow scrolling
-  readingArea.style.maxHeight = "none";
-  readingArea.style.overflowY = "auto";
-
+  // ✅ Restore full text
   showFullText();
 
+  // ✅ Reset reading area styles so it no longer traps scroll
+  readingArea.style.maxHeight = "none";
+  readingArea.style.overflowY = "visible";
+  readingArea.style.position = "static";
+
+  // ✅ Re-enable page scrolling on mobile
+  document.body.style.overflow = "auto";
+
+  // ✅ Save position for resume
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
   document.getElementById("resume-btn").disabled = false;
 }
