@@ -58,7 +58,8 @@ function renderCategories() {
     const li = document.createElement("li");
     li.textContent = cat;
 
-    const delBtn = document.createElement("button");
+    const delBtn = createDeleteButton();
+
     delBtn.textContent = "Delete";
     delBtn.style.background = "#ff4444";
 
@@ -123,7 +124,7 @@ function renderRecentDocs(docs = recentDocs) {
     saveBtn.classList.add("save-btn");
     btnContainer.appendChild(saveBtn);
 
-    const delBtn = document.createElement("button");
+    const delBtn = createDeleteButton();
     delBtn.textContent = "Delete";
     delBtn.addEventListener("click", () => removeRecentDoc(idx));
     btnContainer.appendChild(delBtn);
@@ -465,20 +466,6 @@ textInput.addEventListener("input", () => {
 startBtn.addEventListener("click", startReading);
 stopBtn.addEventListener("click", stopReading);
 
-// ==========================
-// Service Worker
-// ==========================
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .getRegistrations()
-    .then((registrations) => {
-      for (let reg of registrations) reg.unregister(); // Force unregister for dev testing
-    })
-    .finally(() => {
-      navigator.serviceWorker.register("/service-worker.js");
-    });
-}
-
 // ✅ Update categories live after add/delete
 function refreshCategoriesUI() {
   // Save categories persistently
@@ -490,7 +477,7 @@ function refreshCategoriesUI() {
     const li = document.createElement("li");
     li.textContent = cat;
 
-    const delBtn = document.createElement("button");
+    const delBtn = createDeleteButton();
     delBtn.textContent = "Delete";
     delBtn.style.background = "#ff4444";
     delBtn.addEventListener("click", () => {
@@ -508,6 +495,18 @@ function refreshCategoriesUI() {
     li.appendChild(delBtn);
     categoryList.appendChild(li);
   });
+}
+function createDeleteButton(label = "Delete") {
+  const btn = document.createElement("button");
+  btn.textContent = label;
+  btn.style.background = "#ff4444"; // Always red
+  btn.style.color = "#fff";
+  btn.style.border = "none";
+  btn.style.padding = "4px 8px";
+  btn.style.marginLeft = "8px";
+  btn.style.borderRadius = "4px";
+  btn.style.cursor = "pointer";
+  return btn;
 }
 
 // ✅ Modify addCategoryBtn to auto-refresh UI
@@ -547,6 +546,290 @@ function removeRecentDoc(index) {
   recentDocs.splice(index, 1);
   saveRecentDocs(); // ✅ re-renders automatically
 }
+
+// Auto-save text and position every 10 seconds while reading
+setInterval(() => {
+  if (readingInterval) {
+    localStorage.setItem(LAST_POSITION_KEY, currentWord);
+    localStorage.setItem(LAST_TEXT_KEY, textInput.value);
+  }
+}, 10000);
+
+let deferredPrompt;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Show your own install button
+  const installBtn = document.createElement("button");
+  installBtn.textContent = "📲 Install App";
+  installBtn.style.position = "fixed";
+  installBtn.style.bottom = "20px";
+  installBtn.style.right = "20px";
+  installBtn.style.padding = "10px";
+  installBtn.style.background = "#007bff";
+  installBtn.style.color = "#fff";
+  installBtn.style.border = "none";
+  installBtn.style.borderRadius = "8px";
+  installBtn.style.zIndex = "10000";
+
+  installBtn.addEventListener("click", async () => {
+    installBtn.remove();
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      console.log("User installed app");
+    } else {
+      console.log("User dismissed install");
+    }
+    deferredPrompt = null;
+  });
+
+  document.body.appendChild(installBtn);
+});
+window.addEventListener("DOMContentLoaded", () => {
+  assistiveMode = JSON.parse(localStorage.getItem(ASSIST_MODE_KEY) || "false");
+  assistiveToggle.checked = assistiveMode;
+  readingArea.style.background = assistiveMode ? "#e0f7fa" : "#fff";
+});
+
+setTimeout(() => {
+  const fbBanner = document.querySelector("#fb-warning-banner");
+  if (fbBanner) fbBanner.remove();
+}, 15000);
+
+function isInStandaloneMode() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true
+  );
+}
+
+function showInstallPrompt() {
+  // Don't show if already installed or previously dismissed
+  if (isInStandaloneMode() || localStorage.getItem("installPromptDismissed"))
+    return;
+
+  const banner = document.createElement("div");
+  banner.style.position = "fixed";
+  banner.style.bottom = "10px";
+  banner.style.left = "50%";
+  banner.style.transform = "translateX(-50%)";
+  banner.style.background = "#333";
+  banner.style.color = "#fff";
+  banner.style.padding = "10px 15px";
+  banner.style.borderRadius = "8px";
+  banner.style.zIndex = "9999";
+  banner.style.textAlign = "center";
+  banner.style.fontSize = "14px";
+
+  const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  banner.innerHTML = isIOS
+    ? `📲 Add this app to your Home Screen: <br>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>`
+    : `📲 Install this app: <br>Tap <strong>Menu ⋮</strong> → <strong>Add to Home screen</strong>`;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "×";
+  closeBtn.style.marginLeft = "10px";
+  closeBtn.style.background = "transparent";
+  closeBtn.style.color = "#fff";
+  closeBtn.style.border = "none";
+  closeBtn.style.fontSize = "16px";
+  closeBtn.style.cursor = "pointer";
+
+  closeBtn.addEventListener("click", () => {
+    banner.remove();
+    localStorage.setItem("installPromptDismissed", "true"); // Don't show again
+  });
+
+  banner.appendChild(closeBtn);
+  document.body.appendChild(banner);
+
+  // Auto-hide after 10 seconds (optional)
+  setTimeout(() => banner.remove(), 10000);
+}
+
+// Show only on mobile browsers
+if (/android|iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
+  window.addEventListener("DOMContentLoaded", showInstallPrompt);
+}
+
+// ✅ Detect Facebook/Instagram in-app browser
+function isFacebookBrowser() {
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  return ua.includes("FBAN") || ua.includes("FBAV") || ua.includes("Instagram");
+}
+
+// ✅ Show special message if inside Facebook/Instagram browser
+window.addEventListener("DOMContentLoaded", () => {
+  if (isFacebookBrowser()) {
+    const banner = document.createElement("div");
+    banner.style.position = "fixed";
+    banner.style.bottom = "0";
+    banner.style.left = "0";
+    banner.style.right = "0";
+    banner.style.background = "#ffcc00";
+    banner.style.color = "#000";
+    banner.style.padding = "12px";
+    banner.style.textAlign = "center";
+    banner.style.fontSize = "14px";
+    banner.style.zIndex = "9999";
+
+    banner.innerHTML = `
+      ⚠️ You’re viewing this inside Facebook.  
+      <br>For the best experience, <b>tap ⋮ or "Open in Browser"</b> to open in Safari/Chrome,  
+      then add to Home Screen.
+    `;
+
+    document.body.appendChild(banner);
+  }
+});
+
+// ==========================
+// DRAG & DROP FILE SUPPORT
+// ==========================
+function handleDroppedFile(file) {
+  if (!file.type.startsWith("text/")) {
+    alert("Please drop a plain text file.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const text = evt.target.result;
+    textInput.value = text;
+    saveRecentDoc(text); // Auto-save to recent docs
+    updateCodeView(text); // Update code preview
+  };
+  reader.readAsText(file);
+}
+
+// Highlight drop area when dragging
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  document.body.style.border = "3px dashed #007bff";
+});
+
+// Remove highlight when leaving drop area
+document.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  document.body.style.border = "";
+});
+
+// Handle actual drop
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
+  document.body.style.border = ""; // Remove highlight
+
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    handleDroppedFile(file);
+  }
+});
+// ==========================
+// FIXED "CLEAR ALL" BUTTON (with reading lock)
+// ==========================
+const clearBtn = document.createElement("button");
+clearBtn.textContent = "🧹 Clear All";
+
+Object.assign(clearBtn.style, {
+  position: "fixed",
+  bottom: "80px",
+  right: "20px",
+  background: "#999",
+  color: "#fff",
+  border: "none",
+  padding: "10px 14px",
+  borderRadius: "8px",
+  cursor: "not-allowed",
+  zIndex: "9999",
+  opacity: "0.6",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+});
+
+clearBtn.disabled = true; // initial state
+
+// ✅ Toggle visual + functional state
+function setClearBtnState(enable) {
+  if (enable) {
+    clearBtn.disabled = false;
+    clearBtn.style.background = "#666";
+    clearBtn.style.cursor = "pointer";
+    clearBtn.style.opacity = "1";
+  } else {
+    clearBtn.disabled = true;
+    clearBtn.style.background = "#999";
+    clearBtn.style.cursor = "not-allowed";
+    clearBtn.style.opacity = "0.6";
+  }
+}
+
+// ✅ Clear logic with safeguard
+clearBtn.addEventListener("click", () => {
+  if (clearBtn.disabled) return;
+
+  const confirmed = confirm(
+    "⚠️ This will clear all text from the reader. Are you sure?"
+  );
+  if (confirmed) {
+    stopReading();
+    textInput.value = "";
+    readingArea.textContent = "";
+    updateCodeView("");
+    words = [];
+    currentWord = 0;
+    localStorage.removeItem(LAST_TEXT_KEY);
+    localStorage.removeItem(LAST_POSITION_KEY);
+    setClearBtnState(false); // disable again after clearing
+  }
+});
+
+// ✅ Enable/disable on text input
+textInput.addEventListener("input", () => {
+  const hasText = textInput.value.trim().length > 0;
+  if (!readingInterval) setClearBtnState(hasText); // only allow if NOT reading
+});
+
+// ✅ Lock clear while reading
+function lockClearWhileReading(lock) {
+  if (lock) {
+    setClearBtnState(false); // disable during reading
+  } else {
+    const hasText = textInput.value.trim().length > 0;
+    setClearBtnState(hasText); // restore based on text availability
+  }
+}
+
+// ✅ Hook into start/stop reading
+const originalStartReading = startReading;
+startReading = function (...args) {
+  lockClearWhileReading(true);
+  originalStartReading.apply(this, args);
+};
+
+const originalStopReading = stopReading;
+stopReading = function (...args) {
+  originalStopReading.apply(this, args);
+  lockClearWhileReading(false);
+};
+
+// ✅ Add to page
+document.body.appendChild(clearBtn);
+
+// ==========================
+// Service Worker
+// ==========================
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .getRegistrations()
+    .then((registrations) => {
+      for (let reg of registrations) reg.unregister(); // Force unregister for dev testing
+    })
+    .finally(() => {
+      navigator.serviceWorker.register("/service-worker.js");
+    });
+}
+
 /* 
 --------------------------------------------
 Text Reader App - v1.1 AutoSave Edition
