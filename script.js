@@ -389,10 +389,6 @@ function startReading(fromIndex = null) {
   textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // ✅ Do NOT lock height or overflow – let normal scrolling continue
-  readingArea.style.maxHeight = "none";
-  readingArea.style.overflowY = "visible";
-
   // Reading loop
   const interval = 60000 / parseInt(wpmSlider.value, 10);
   if (readingInterval) clearInterval(readingInterval);
@@ -419,10 +415,6 @@ function stopReading() {
   stopBtn.disabled = true;
   textInput.disabled = false;
   wpmSlider.disabled = false;
-
-  // ✅ Make sure readingArea scrolls normally
-  readingArea.style.maxHeight = "none";
-  readingArea.style.overflowY = "auto";
 
   // ✅ Save current position for resume
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
