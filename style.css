@@ -74,6 +74,10 @@ textarea {
   z-index: 100;
   font-size: 1.2rem;
   border-bottom: 1px solid #ddd;
+
+  overflow-y: auto; /* allow vertical scroll */
+  max-height: 50vh; /* limit max height so scroll appears if text overflows */
+  white-space: pre-wrap; /* preserve line breaks */
 }
 
 .highlight {
