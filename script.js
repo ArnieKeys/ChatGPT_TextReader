@@ -50,7 +50,6 @@ const CATEGORIES_KEY = "text_reader_categories";
 
 document.getElementById("read-selection-btn").addEventListener("click", () => {
   const textarea = document.getElementById("text-input");
-  const fullText = textarea.value.trim();
   const selectionStart = textarea.selectionStart;
   const selectionEnd = textarea.selectionEnd;
 
@@ -59,44 +58,21 @@ document.getElementById("read-selection-btn").addEventListener("click", () => {
     return;
   }
 
-  // Extract the selected text from the textarea
+  // ✅ Get the selected text directly
   const selectedText = textarea.value
     .substring(selectionStart, selectionEnd)
     .trim();
+
   if (!selectedText) {
     alert("Selected text is empty.");
     return;
   }
 
-  // Normalize both full text and selected text
-  const normalize = (str) =>
-    str
-      .replace(/[.,!?;:()\[\]{}"“”‘’]/g, "") // Remove punctuation
-      .replace(/[\n\r]+/g, " ") // Replace newlines with space
-      .replace(/\s+/g, " ") // Collapse whitespace
-      .trim()
-      .split(" ")
-      .map((w) => w.toLowerCase());
+  // ✅ Replace the main text with selected text temporarily
+  textInput.value = selectedText;
 
-  const allWords = normalize(fullText);
-  const selectedWords = normalize(selectedText);
-
-  // Store globally so reading can proceed
-  words = allWords;
-
-  // Try to find matching index of selectedWords in allWords
-  const index = allWords.findIndex((_, i) =>
-    selectedWords.every((word, j) => allWords[i + j] === word)
-  );
-
-  if (index !== -1) {
-    startReading(index);
-  } else {
-    alert(
-      "Could not match the selected text to the document.\n" +
-        "Try selecting a smaller chunk or removing punctuation."
-    );
-  }
+  // ✅ Start reading from the beginning of the selection
+  startReading(0);
 });
 
 document.getElementById("resume-btn").addEventListener("click", () => {
@@ -286,11 +262,13 @@ function renderRecentDocs(docs = recentDocs) {
 
     // ✅ Save button
     const saveBtn = document.createElement("button");
+    saveBtn.classList.add("save-category");
     saveBtn.textContent = "Save to Category";
     saveBtn.addEventListener("click", () => saveDocumentToCategory(doc.text));
 
     // ✅ Delete button
     const delBtn = document.createElement("button");
+    deleteBtn.classList.add("delete-category");
     delBtn.textContent = "Delete";
     delBtn.addEventListener("click", () => {
       if (confirm("Delete this document?")) {

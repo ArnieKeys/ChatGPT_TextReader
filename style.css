@@ -279,6 +279,24 @@ button:hover {
   background-color: #0056b3;
 }
 
+/* ✅ Save category: green */
+button.save-category {
+  background: #28a745; /* green */
+}
+
+/* ✅ Delete category: red */
+button.delete-category {
+  background: #dc3545; /* red */
+}
+
+/* Hover states */
+button.save-category:hover {
+  background: #218838;
+}
+button.delete-category:hover {
+  background: #c82333;
+}
+
 /* Inputs */
 input[type="text"],
 input[type="file"],
