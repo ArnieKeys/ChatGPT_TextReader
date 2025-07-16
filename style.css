@@ -89,11 +89,12 @@ textarea {
 
 /* === Controls & Sliders === */
 .controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  justify-content: center;
-  margin-bottom: 1rem;
+  position: sticky;
+  top: 0;
+  background: #fff; /* keeps background solid */
+  padding: 10px;
+  z-index: 10; /* always on top */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* slight shadow */
 }
 
 .controls button,
@@ -348,8 +349,14 @@ label[for="file-input"] {
 
   /* Sticky reading area stays visible */
   .reading-area {
-    font-size: 1.1rem;
-    padding: 0.6rem;
+    margin-top: 10px;
+    padding: 10px;
+    line-height: 1.6;
+    max-height: calc(100vh - 180px); /* Leaves room for controls */
+    overflow-y: auto;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
   }
 
   /* Compact textarea */

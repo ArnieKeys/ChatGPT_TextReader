@@ -344,7 +344,6 @@ function removeRecentDoc(index) {
 }
 
 function startReadingFromIndex(index) {
-  // If words are not loaded yet, rebuild from textarea
   if (!words.length) {
     const text = textInput.value.trim();
     if (!text) return;
@@ -357,7 +356,7 @@ function startReadingFromIndex(index) {
 
   if (index < 0 || index >= words.length) return;
 
-  // Reuse main reading logic
+  // Always start from this index
   startReading(index);
 }
 
@@ -365,8 +364,8 @@ function startReading(fromIndex = null) {
   const text = textInput.value.trim();
   if (!text) return;
 
-  // Save to recent docs only if it's a fresh read
-  saveRecentDoc(text);
+  // Save document to recent list only if this is a fresh read
+  if (fromIndex === null) saveRecentDoc(text);
 
   // Prepare words array
   words = text
@@ -375,29 +374,29 @@ function startReading(fromIndex = null) {
     .trim()
     .split(" ");
 
-  // Determine starting index
-  if (fromIndex !== null && fromIndex >= 0 && fromIndex < words.length) {
-    currentWord = fromIndex;
-  } else {
-    currentWord = 0;
-  }
+  // Decide where to start
+  currentWord =
+    fromIndex !== null && fromIndex >= 0 && fromIndex < words.length
+      ? fromIndex
+      : 0;
 
   // Show initial chunk
   showWord();
 
-  // Disable UI during reading
+  // Disable inputs while reading
   startBtn.disabled = true;
   stopBtn.disabled = false;
   textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // Ensure reading area remains scrollable on mobile
-  readingArea.style.maxHeight = "200px";
-  readingArea.style.overflowY = "auto";
+  // ✅ Don’t force any weird scrolling constraints
+  readingArea.style.maxHeight = "none";
+  readingArea.style.overflowY = "visible";
 
-  // Reading interval
+  // Setup reading interval
   const interval = 60000 / parseInt(wpmSlider.value, 10);
   if (readingInterval) clearInterval(readingInterval);
+
   readingInterval = setInterval(() => {
     currentWord += chunkSize;
     if (currentWord >= words.length) {
@@ -409,7 +408,6 @@ function startReading(fromIndex = null) {
 }
 
 function stopReading() {
-  // Stop reading interval
   clearInterval(readingInterval);
   readingInterval = null;
 
@@ -419,14 +417,13 @@ function stopReading() {
   textInput.disabled = false;
   wpmSlider.disabled = false;
 
-  // Restore full text view
+  // ✅ Restore full text and keep scrollable area
   showFullText();
 
-  // ✅ Allow full scrolling again
-  readingArea.style.maxHeight = "none";
+  readingArea.style.maxHeight = "calc(100vh - 180px)";
   readingArea.style.overflowY = "auto";
 
-  // Save current position for resume
+  // Save resume position
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
   document.getElementById("resume-btn").disabled = false;
 }
