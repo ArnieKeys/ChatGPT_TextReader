@@ -263,7 +263,7 @@ function renderRecentDocs(docs = recentDocs) {
     // ✅ Save button
     const saveBtn = document.createElement("button");
     saveBtn.classList.add("save-category");
-    saveBtn.textContent = "Save to Category";
+    saveBtn.textContent = "Save";
     saveBtn.addEventListener("click", () => saveDocumentToCategory(doc.text));
 
     // ✅ Delete button
