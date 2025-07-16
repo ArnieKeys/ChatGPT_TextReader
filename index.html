@@ -58,7 +58,7 @@
       <div class="content-area">
         <!-- ✅ Main content FIRST (for mobile priority) -->
         <main>
-          <!-- 🔹 Controls for loading & reading -->
+          <!-- ✅ All controls in one place -->
           <div class="controls">
             <label for="file-input">Load from file</label>
             <input type="file" id="file-input" accept=".txt" />
@@ -66,52 +66,70 @@
             <button id="start-btn">Start Reading</button>
             <button id="stop-btn" disabled>Stop</button>
             <button id="resume-btn" disabled>Resume</button>
-            <button id="read-selection-btn">Read Selection</button>
-
-            <!-- Assistive toggle -->
-            <label class="assistive-toggle">
+            <button id="read-selection-btn">Read From Selection</button>
+            <label>
               <input type="checkbox" id="assistive-toggle" /> Assistive Mode
             </label>
-          </div>
-          <!-- 🔹 Reading area at the top for immediate visibility -->
-          <div class="reading-area" id="reading-area">
-            <!-- Highlighted text appears here -->
+
+            <!-- ✅ Sliders -->
+            <div>
+              <span>Words per minute:</span>
+              <input
+                type="range"
+                min="60"
+                max="600"
+                value="200"
+                id="wpm-slider"
+              />
+              <span id="wpm-value">200</span>
+            </div>
+            <div>
+              <span>Words per chunk:</span>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value="1"
+                id="chunk-slider"
+              />
+              <span id="chunk-value">1</span>
+            </div>
           </div>
 
-          <!-- 🔹 Text input box -->
+          <!-- ✅ Recent Docs + Categories BEFORE the text -->
+          <aside class="sidebar">
+            <h2>Recent Documents</h2>
+            <ul class="recent-list" id="recent-list"></ul>
+
+            <h3>Categories</h3>
+            <input
+              type="text"
+              id="category-input"
+              placeholder="Enter category"
+            />
+            <button id="add-category-btn">Save Category</button>
+            <select id="category-filter">
+              <option value="">All Categories</option>
+            </select>
+            <div id="category-manager">
+              <h3>Manage Categories</h3>
+              <ul id="category-list"></ul>
+            </div>
+          </aside>
+
+          <!-- ✅ Textarea (editable) -->
           <textarea
             id="text-input"
             placeholder="Paste or load your text here..."
           ></textarea>
 
-          <!-- 🔹 Reading speed and chunk sliders -->
-          <div class="controls">
-            <span class="slider-label">Words per minute:</span>
-            <input
-              type="range"
-              min="60"
-              max="600"
-              value="200"
-              id="wpm-slider"
-              class="slider"
-            />
-            <span id="wpm-value">200</span>
-          </div>
+          <!-- ✅ Reading area -->
+          <div class="reading-area" id="reading-area"></div>
 
-          <div class="controls">
-            <span class="slider-label">Words per chunk:</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value="1"
-              id="chunk-slider"
-              class="slider"
-            />
-            <span id="chunk-value">1</span>
-          </div>
+          <!-- ✅ Printed document after stopReading() -->
+          <div id="printed-doc"></div>
 
-          <!-- 🔹 Code viewer section -->
+          <!-- ✅ Code viewer -->
           <section>
             <h2>Code Viewer</h2>
             <pre><code id="code-display" class="language-html"></code></pre>
