@@ -34,6 +34,12 @@ const ASSIST_MODE_KEY = "text_reader_assistive_mode";
 const RECENT_DOCS_KEY = "text_reader_recent_docs";
 const CATEGORIES_KEY = "text_reader_categories";
 
+const categoryList = document.getElementById("category-list");
+
+if (!recentList || !categoryList) {
+  console.warn("Sidebar elements not found!");
+}
+
 // document.getElementById("search-input").addEventListener("input", () => {
 //   const searchTerm = document
 //     .getElementById("search-input")
@@ -50,29 +56,54 @@ const CATEGORIES_KEY = "text_reader_categories";
 
 document.getElementById("read-selection-btn").addEventListener("click", () => {
   const textarea = document.getElementById("text-input");
+  const fullText = textarea.value.trim();
   const selectionStart = textarea.selectionStart;
   const selectionEnd = textarea.selectionEnd;
+
+  textarea.blur(); // ✅ Avoid mobile focus issues
 
   if (selectionStart === selectionEnd) {
     alert("Please select some text inside the text box.");
     return;
   }
 
-  // ✅ Get the selected text directly
-  const selectedText = textarea.value
-    .substring(selectionStart, selectionEnd)
-    .trim();
-
+  const selectedText = fullText.substring(selectionStart, selectionEnd).trim();
   if (!selectedText) {
     alert("Selected text is empty.");
     return;
   }
 
-  // ✅ Replace the main text with selected text temporarily
-  textInput.value = selectedText;
+  // Normalize text for matching
+  const normalize = (str) =>
+    str
+      .replace(/[.,!?;:()\[\]{}"“”‘’]/g, "")
+      .replace(/[\n\r]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .map((w) => w.toLowerCase());
 
-  // ✅ Start reading from the beginning of the selection
-  startReading(0);
+  const allWords = normalize(fullText);
+  const selectedWords = normalize(selectedText);
+
+  words = allWords; // ✅ Reset global words
+
+  // Try to find selection in full text
+  let index = -1;
+  for (let i = 0; i <= allWords.length - selectedWords.length; i++) {
+    if (selectedWords.every((w, j) => allWords[i + j] === w)) {
+      index = i;
+      break;
+    }
+  }
+
+  if (index !== -1) {
+    startReading(index); // ✅ Start at found index
+  } else {
+    // ✅ Safe fallback → just read selection directly
+    words = selectedWords;
+    startReading(0);
+  }
 });
 
 document.getElementById("resume-btn").addEventListener("click", () => {
@@ -262,13 +293,13 @@ function renderRecentDocs(docs = recentDocs) {
 
     // ✅ Save button
     const saveBtn = document.createElement("button");
-    saveBtn.classList.add("save-category");
     saveBtn.textContent = "Save";
-    saveBtn.addEventListener("click", () => saveDocumentToCategory(doc.text));
+    saveBtn.classList.add("save-btn"); // ✅ Add class for green styling
+    li.appendChild(saveBtn);
 
     // ✅ Delete button
     const delBtn = document.createElement("button");
-    deleteBtn.classList.add("delete-category");
+    delBtn.classList.add("delete-category"); // ✅ FIXED: now using delBtn correctly
     delBtn.textContent = "Delete";
     delBtn.addEventListener("click", () => {
       if (confirm("Delete this document?")) {
@@ -340,35 +371,38 @@ function startReadingFromIndex(index) {
 
 function startReading(fromIndex = null) {
   const text = textInput.value.trim();
-  if (!text) return;
+  if (!text) {
+    alert("Please enter or load text before reading.");
+    return;
+  }
 
-  // Save to recent docs only if it's a fresh read
-  saveRecentDoc(text);
-
-  // Prepare words array
+  // ✅ Ensure words are built fresh
   words = text
     .replace(/[\n\r]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .split(" ");
 
-  // Determine starting index
+  // ✅ Decide starting point
   currentWord =
     fromIndex !== null && fromIndex >= 0 && fromIndex < words.length
       ? fromIndex
       : 0;
 
-  // Show the initial chunk
   showWord();
 
-  // Disable editing while reading
+  // ✅ Only disable what’s necessary
   startBtn.disabled = true;
   stopBtn.disabled = false;
-  textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // Reading loop
+  // ✅ Don’t mess with mobile scrolling
+  readingArea.style.maxHeight = "none";
+  readingArea.style.overflowY = "auto";
+
   const interval = 60000 / parseInt(wpmSlider.value, 10);
+
+  // ✅ Clear previous reading loop
   if (readingInterval) clearInterval(readingInterval);
 
   readingInterval = setInterval(() => {
@@ -501,7 +535,13 @@ function removeCategory(catToRemove) {
 }
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
-    .register("/service-worker.js")
-    .then(() => console.log("✅ Service Worker Registered"))
-    .catch((err) => console.log("❌ SW registration failed:", err));
+    .getRegistrations()
+    .then((registrations) => {
+      for (let reg of registrations) {
+        reg.unregister(); // Force unregister for dev testing
+      }
+    })
+    .finally(() => {
+      navigator.serviceWorker.register("/service-worker.js");
+    });
 }

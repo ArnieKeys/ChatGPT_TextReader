@@ -279,22 +279,24 @@ button:hover {
   background-color: #0056b3;
 }
 
-/* ✅ Save category: green */
-button.save-category {
-  background: #28a745; /* green */
+/* Force Save & Delete colors */
+.recent-list li button.save-btn {
+  background: #4caf50 !important; /* ✅ Green Save */
+  color: #fff !important;
 }
 
-/* ✅ Delete category: red */
-button.delete-category {
-  background: #dc3545; /* red */
+.recent-list li button.delete-btn {
+  background: #ff4444 !important; /* ✅ Red Delete */
+  color: #fff !important;
 }
 
-/* Hover states */
-button.save-category:hover {
-  background: #218838;
+/* Optional hover tweaks */
+.recent-list li button.save-btn:hover {
+  background: #3e9142 !important;
 }
-button.delete-category:hover {
-  background: #c82333;
+
+.recent-list li button.delete-btn:hover {
+  background: #d93636 !important;
 }
 
 /* Inputs */
