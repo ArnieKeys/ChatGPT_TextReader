@@ -348,15 +348,16 @@ label[for="file-input"] {
   }
 
   /* Sticky reading area stays visible */
-  .reading-area {
-    margin-top: 10px;
+  #reading-area {
+    max-height: 300px; /* Set a comfortable height */
+    overflow-y: auto; /* Enable vertical scrolling */
     padding: 10px;
-    line-height: 1.6;
-    max-height: calc(100vh - 180px); /* Leaves room for controls */
-    overflow-y: auto;
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fafafa;
+    font-size: 1.1em;
+    line-height: 1.5;
+    white-space: normal;
+    margin-bottom: 1rem;
   }
 
   /* Compact textarea */

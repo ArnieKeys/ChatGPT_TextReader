@@ -364,8 +364,8 @@ function startReading(fromIndex = null) {
   const text = textInput.value.trim();
   if (!text) return;
 
-  // Save document to recent list only if this is a fresh read
-  if (fromIndex === null) saveRecentDoc(text);
+  // Save to recent docs only if it's a fresh read
+  saveRecentDoc(text);
 
   // Prepare words array
   words = text
@@ -374,26 +374,26 @@ function startReading(fromIndex = null) {
     .trim()
     .split(" ");
 
-  // Decide where to start
+  // Determine starting index
   currentWord =
     fromIndex !== null && fromIndex >= 0 && fromIndex < words.length
       ? fromIndex
       : 0;
 
-  // Show initial chunk
+  // Show the initial chunk
   showWord();
 
-  // Disable inputs while reading
+  // Disable editing while reading
   startBtn.disabled = true;
   stopBtn.disabled = false;
   textInput.disabled = true;
   wpmSlider.disabled = true;
 
-  // ✅ Don’t force any weird scrolling constraints
+  // ✅ Do NOT lock height or overflow – let normal scrolling continue
   readingArea.style.maxHeight = "none";
   readingArea.style.overflowY = "visible";
 
-  // Setup reading interval
+  // Reading loop
   const interval = 60000 / parseInt(wpmSlider.value, 10);
   if (readingInterval) clearInterval(readingInterval);
 
@@ -411,19 +411,20 @@ function stopReading() {
   clearInterval(readingInterval);
   readingInterval = null;
 
-  // Re-enable controls
+  // ✅ Show the full text again
+  showFullText();
+
+  // ✅ Re-enable all controls
   startBtn.disabled = false;
   stopBtn.disabled = true;
   textInput.disabled = false;
   wpmSlider.disabled = false;
 
-  // ✅ Restore full text and keep scrollable area
-  showFullText();
-
-  readingArea.style.maxHeight = "calc(100vh - 180px)";
+  // ✅ Make sure readingArea scrolls normally
+  readingArea.style.maxHeight = "none";
   readingArea.style.overflowY = "auto";
 
-  // Save resume position
+  // ✅ Save current position for resume
   localStorage.setItem(LAST_POSITION_KEY, currentWord);
   document.getElementById("resume-btn").disabled = false;
 }
