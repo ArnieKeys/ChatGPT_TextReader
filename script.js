@@ -68,39 +68,60 @@ function updateCodeView(text) {
 // ==========================
 // CATEGORY RENDERING
 // ==========================
-function renderCategories() {
-  categoryFilter.innerHTML = `<option value="">All Categories</option>`;
-  categoryList.innerHTML = "";
 
-  categories.forEach((cat) => {
+// Update UI when categories change
+function renderCategories() {
+  const categoryList = document.getElementById("category-list");
+  const categoryFilter = document.getElementById("category-filter");
+
+  categoryList.innerHTML = "";
+  categoryFilter.innerHTML = '<option value="">All Categories</option>';
+
+  categories.forEach((cat, index) => {
+    // Sidebar manager list
+    const li = document.createElement("li");
+    li.textContent = cat;
+
+    // Delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => {
+      categories.splice(index, 1);
+      localStorage.setItem("categories", JSON.stringify(categories));
+      renderCategories();
+    });
+
+    li.appendChild(deleteBtn);
+    categoryList.appendChild(li);
+
+    // Filter dropdown option
     const opt = document.createElement("option");
     opt.value = cat;
     opt.textContent = cat;
     categoryFilter.appendChild(opt);
-
-    const li = document.createElement("li");
-    li.textContent = cat;
-
-    const delBtn = createDeleteButton();
-    delBtn.addEventListener("click", () => {
-      if (confirm(`Delete category "${cat}"?`)) {
-        categories = categories.filter((c) => c !== cat);
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-
-        // Reset docs in this category → Uncategorized
-        recentDocs.forEach((doc) => {
-          if (doc.category === cat) doc.category = "Uncategorized";
-        });
-        saveRecentDocs();
-
-        renderCategories();
-      }
-    });
-
-    li.appendChild(delBtn);
-    categoryList.appendChild(li);
   });
 }
+
+// Handle Save Category button click
+document.getElementById("add-category-btn").addEventListener("click", () => {
+  const input = document.getElementById("category-input");
+  const newCategory = input.value.trim();
+
+  if (!newCategory) {
+    alert("Please enter a category name.");
+    return;
+  }
+  if (categories.includes(newCategory)) {
+    alert("Category already exists.");
+    return;
+  }
+
+  categories.push(newCategory);
+  localStorage.setItem("categories", JSON.stringify(categories));
+  renderCategories();
+
+  input.value = ""; // clear input
+});
 
 function refreshCategoriesUI() {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
