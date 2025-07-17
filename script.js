@@ -1,330 +1,317 @@
 document.addEventListener("DOMContentLoaded", () => {
-  /* === DOM ELEMENTS === */
-  const readingArea = document.getElementById("reading-area");
+  /* === DOM Elements === */
   const textInput = document.getElementById("text-input");
-
-  const pasteBtn = document.getElementById("paste-btn");
+  const readingArea = document.getElementById("reading-area");
   const startBtn = document.getElementById("start-btn");
   const stopBtn = document.getElementById("stop-btn");
   const resumeBtn = document.getElementById("resume-btn");
   const readSelectionBtn = document.getElementById("read-selection-btn");
-
-  const wpmSlider = document.getElementById("wpm-slider");
-  const chunkSlider = document.getElementById("chunk-slider");
-  const wpmValue = document.getElementById("wpm-value");
-  const chunkValue = document.getElementById("chunk-value");
+  const pasteBtn = document.getElementById("paste-btn");
   const assistiveToggle = document.getElementById("assistive-toggle");
-
+  const wpmSlider = document.getElementById("wpm-slider");
+  const wpmValue = document.getElementById("wpm-value");
+  const chunkSlider = document.getElementById("chunk-slider");
+  const chunkValue = document.getElementById("chunk-value");
   const fileInput = document.getElementById("file-input");
+  const codeDisplay = document.getElementById("code-display");
+  const recentList = document.getElementById("recent-list");
+  const categoryInput = document.getElementById("category-input");
+  const addCategoryBtn = document.getElementById("add-category-btn");
+  const categoryFilter = document.getElementById("category-filter");
+  const categoryList = document.getElementById("category-list");
+  const printedDoc = document.getElementById("printed-doc");
+
+  /* === Floating Clear Button === */
   const clearBtn = document.createElement("button");
   clearBtn.textContent = "Clear All";
   clearBtn.className = "clear-btn";
   document.body.appendChild(clearBtn);
 
-  const recentList = document.getElementById("recent-list");
-  const addCategoryBtn = document.getElementById("add-category-btn");
-  const categoryInput = document.getElementById("category-input");
-  const categoryList = document.getElementById("category-list");
-  const categoryFilter = document.getElementById("category-filter");
+  /* === Dark Mode Toggle === */
+  const header = document.querySelector("header");
+  const darkToggle = document.createElement("button");
+  darkToggle.textContent = "🌙 Dark Mode";
+  darkToggle.style.marginLeft = "auto";
+  header.appendChild(darkToggle);
 
-  /* === STATE === */
+  /* === State Variables === */
   let words = [];
   let currentIndex = 0;
   let readingTimer = null;
-  let isPaused = false;
-  let isReading = false;
-  let toastLock = false;
-
+  let paused = false;
   let recentDocs = JSON.parse(localStorage.getItem("recentDocs") || "[]");
   let categories = JSON.parse(localStorage.getItem("categories") || "[]");
 
-  /* === UTILITIES === */
-  const showToast = (message, type = "info") => {
-    if (toastLock) return;
-    toastLock = true;
+  /* === Utility Functions === */
+  const showToast = (msg, type = "info") => {
     const toast = document.createElement("div");
     toast.className = `toast toast-${type} visible`;
-    toast.textContent = message;
+    toast.textContent = msg;
     document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.remove("visible");
-      setTimeout(() => {
-        toast.remove();
-        toastLock = false;
-      }, 300);
-    }, 2000);
+    setTimeout(() => toast.classList.remove("visible"), 2000);
+    setTimeout(() => toast.remove(), 2500);
   };
 
-  const saveState = () => {
+  const saveRecentDoc = (title, text, category = "") => {
+    if (!text.trim()) return;
+    recentDocs.unshift({ title, text, category, date: Date.now() });
+    recentDocs = recentDocs.slice(0, 10);
     localStorage.setItem("recentDocs", JSON.stringify(recentDocs));
-    localStorage.setItem("categories", JSON.stringify(categories));
-  };
-
-  const toggleButtons = (reading) => {
-    isReading = reading;
-    startBtn.disabled = reading;
-    stopBtn.disabled = !reading;
-    resumeBtn.disabled = true;
-    clearBtn.classList.toggle("active", textInput.value.trim().length > 0);
+    renderRecentDocs();
   };
 
   const renderRecentDocs = () => {
     recentList.innerHTML = "";
     const filter = categoryFilter.value;
+    recentDocs
+      .filter((doc) => !filter || doc.category === filter)
+      .forEach((doc, idx) => {
+        const li = document.createElement("li");
 
-    const filteredDocs = filter
-      ? recentDocs.filter((doc) => doc.category === filter)
-      : recentDocs;
+        const titleSpan = document.createElement("span");
+        titleSpan.textContent = doc.title;
+        titleSpan.className = "doc-title";
+        titleSpan.addEventListener("click", () => {
+          textInput.value = doc.text;
+          updateCodeViewer(doc.text);
+        });
 
-    filteredDocs.forEach((doc, index) => {
-      const li = document.createElement("li");
-      const titleSpan = document.createElement("span");
-      titleSpan.className = "doc-title";
-      titleSpan.textContent = doc.title;
-      titleSpan.addEventListener("click", () => {
-        textInput.value = doc.content;
-        readingArea.innerHTML = doc.content;
-        showToast(`Loaded: ${doc.title}`, "info");
-        clearBtn.classList.add("active");
+        const categorySpan = document.createElement("span");
+        categorySpan.textContent = doc.category ? `(${doc.category})` : "";
+        categorySpan.className = "category-label";
+
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "doc-buttons";
+
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = "Save→Category";
+        saveBtn.className = "save-btn";
+        saveBtn.addEventListener("click", () => {
+          const catName = prompt("Enter category name:");
+          if (catName) {
+            doc.category = catName;
+            if (!categories.includes(catName)) {
+              categories.push(catName);
+              localStorage.setItem("categories", JSON.stringify(categories));
+              renderCategories();
+            }
+            localStorage.setItem("recentDocs", JSON.stringify(recentDocs));
+            renderRecentDocs();
+          }
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.className = "delete-btn";
+        deleteBtn.addEventListener("click", () => {
+          recentDocs.splice(idx, 1);
+          localStorage.setItem("recentDocs", JSON.stringify(recentDocs));
+          renderRecentDocs();
+        });
+
+        btnGroup.append(saveBtn, deleteBtn);
+        li.append(titleSpan, categorySpan, btnGroup);
+        recentList.appendChild(li);
       });
-
-      const categoryLabel = document.createElement("span");
-      categoryLabel.className = "category-label";
-      categoryLabel.textContent = doc.category || "Uncategorized";
-
-      const btnGroup = document.createElement("div");
-      btnGroup.className = "doc-buttons";
-
-      const saveBtn = document.createElement("button");
-      saveBtn.className = "save-btn";
-      saveBtn.textContent = "Save to Category";
-      saveBtn.addEventListener("click", () => {
-        const catName = prompt("Enter a category name:");
-        const cleanName = catName ? catName.trim() : "";
-        if (!cleanName) {
-          showToast("Category name required", "error");
-          return;
-        }
-        doc.category = cleanName;
-        if (!categories.includes(cleanName)) {
-          categories.push(cleanName);
-          renderCategories();
-        }
-        saveState();
-        renderRecentDocs();
-        showToast(`Saved to: ${cleanName}`, "success");
-      });
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "delete-btn";
-      delBtn.textContent = "Delete";
-      delBtn.addEventListener("click", () => {
-        recentDocs.splice(index, 1);
-        saveState();
-        renderRecentDocs();
-        showToast("Deleted", "info");
-      });
-
-      btnGroup.appendChild(saveBtn);
-      btnGroup.appendChild(delBtn);
-
-      li.appendChild(titleSpan);
-      li.appendChild(categoryLabel);
-      li.appendChild(btnGroup);
-      recentList.appendChild(li);
-    });
   };
 
   const renderCategories = () => {
-    categoryFilter.innerHTML = '<option value="">All Categories</option>';
     categoryList.innerHTML = "";
-
+    categoryFilter.innerHTML = `<option value="">All Categories</option>`;
     categories.forEach((cat) => {
+      const li = document.createElement("li");
+      li.textContent = cat;
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "×";
+      delBtn.addEventListener("click", () => {
+        categories = categories.filter((c) => c !== cat);
+        localStorage.setItem("categories", JSON.stringify(categories));
+        renderCategories();
+      });
+
+      li.appendChild(delBtn);
+      categoryList.appendChild(li);
+
       const option = document.createElement("option");
       option.value = cat;
       option.textContent = cat;
       categoryFilter.appendChild(option);
-
-      const li = document.createElement("li");
-      li.textContent = cat;
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "X";
-      delBtn.addEventListener("click", () => {
-        categories = categories.filter((c) => c !== cat);
-        recentDocs = recentDocs.map((doc) =>
-          doc.category === cat ? { ...doc, category: "" } : doc
-        );
-        saveState();
-        renderCategories();
-        renderRecentDocs();
-        showToast("Category removed", "info");
-      });
-      li.appendChild(delBtn);
-      categoryList.appendChild(li);
     });
   };
 
-  /* === READING CORE === */
-  const displayChunk = (chunkSize) => {
-    if (currentIndex >= words.length) {
-      stopReading();
-      return;
-    }
-    const chunk = words.slice(currentIndex, currentIndex + chunkSize).join(" ");
-    currentIndex += chunkSize;
-
-    const before = words.slice(0, currentIndex - chunkSize).join(" ");
-    const after = words.slice(currentIndex).join(" ");
-
-    readingArea.innerHTML = `${before} <span class="highlight">${chunk}</span> ${after}`;
-
-    if (assistiveToggle.checked) {
-      readingArea.classList.add("assistive-active");
-    } else {
-      readingArea.classList.remove("assistive-active");
-    }
+  const updateCodeViewer = (code) => {
+    codeDisplay.textContent = code.trim();
+    Prism.highlightElement(codeDisplay);
   };
 
-  const runReading = () => {
-    clearInterval(readingTimer);
+  /* === Reading Pacer & Speech === */
+  const getInterval = () => {
     const wpm = parseInt(wpmSlider.value, 10);
-    const chunkSize = parseInt(chunkSlider.value, 10);
-    const interval = (60 / wpm) * 1000 * chunkSize;
-
-    readingTimer = setInterval(() => displayChunk(chunkSize), interval);
+    return (60 / wpm) * 1000;
   };
 
-  const startReading = (customText) => {
-    const text = (customText || textInput.value).trim();
-    if (!text) {
-      showToast("Please enter or load text", "error");
-      return;
-    }
+  const startReading = (startIdx = 0) => {
+    const text = textInput.value.trim();
+    if (!text) return showToast("No text to read!", "error");
+
     words = text.split(/\s+/);
-    currentIndex = 0;
-    isPaused = false;
-    runReading();
-    toggleButtons(true);
+    currentIndex = startIdx;
+    paused = false;
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    resumeBtn.disabled = true;
+
+    readingArea.classList.toggle("assistive-active", assistiveToggle.checked);
+
+    const readChunk = () => {
+      if (currentIndex >= words.length) {
+        stopReading();
+        return;
+      }
+
+      const chunkSize = parseInt(chunkSlider.value, 10);
+      const chunkWords = words.slice(currentIndex, currentIndex + chunkSize);
+      const chunkText = chunkWords.join(" ");
+
+      readingArea.innerHTML = `
+        <pre>${
+          words.slice(0, currentIndex).join(" ") +
+          ' <span class="highlight">' +
+          chunkText +
+          "</span> " +
+          words.slice(currentIndex + chunkSize).join(" ")
+        }</pre>`;
+
+      // Speak if assistive toggle ON
+      if (assistiveToggle.checked) {
+        const utter = new SpeechSynthesisUtterance(chunkText);
+        speechSynthesis.cancel();
+        speechSynthesis.speak(utter);
+      }
+
+      currentIndex += chunkSize;
+
+      if (!paused) {
+        readingTimer = setTimeout(readChunk, getInterval());
+      }
+    };
+
+    readChunk();
   };
 
   const stopReading = () => {
-    clearInterval(readingTimer);
-    isPaused = true;
-    toggleButtons(false);
-    readingArea.innerHTML = textInput.value;
+    clearTimeout(readingTimer);
+    paused = false;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    resumeBtn.disabled = false;
+    printedDoc.textContent = textInput.value;
   };
 
   const resumeReading = () => {
-    if (!words.length || !isPaused) {
-      showToast("Nothing to resume", "info");
-      return;
-    }
-    isPaused = false;
-    runReading();
-    resumeBtn.disabled = true;
+    if (!words.length) return;
+    paused = false;
     stopBtn.disabled = false;
-    showToast("Resumed", "success");
+    resumeBtn.disabled = true;
+    startReading(currentIndex);
   };
 
-  /* === FILE LOADING === */
+  const readFromSelection = () => {
+    const selected = window.getSelection().toString().trim();
+    if (!selected) return showToast("No text selected!", "error");
+    textInput.value = selected;
+    updateCodeViewer(selected);
+    startReading(0);
+  };
+
+  /* === Event Listeners === */
+  startBtn.addEventListener("click", () => startReading(0));
+  stopBtn.addEventListener("click", stopReading);
+  resumeBtn.addEventListener("click", resumeReading);
+  readSelectionBtn.addEventListener("click", readFromSelection);
+
+  pasteBtn.addEventListener("click", async () => {
+    const clip = await navigator.clipboard.readText();
+    if (clip.trim()) {
+      textInput.value = clip.trim();
+      updateCodeViewer(clip.trim());
+      saveRecentDoc("Clipboard Text", clip.trim());
+    }
+  });
+
   fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       textInput.value = ev.target.result;
-      readingArea.innerHTML = ev.target.result;
-      clearBtn.classList.add("active");
-      showToast(`Loaded file: ${file.name}`, "success");
+      updateCodeViewer(ev.target.result);
+      saveRecentDoc(file.name, ev.target.result);
     };
     reader.readAsText(file);
   });
 
-  /* === BUTTON EVENTS === */
-  pasteBtn.addEventListener("click", async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text.trim()) {
-        showToast("Clipboard is empty", "error");
-        return;
-      }
-      textInput.value = text;
-      readingArea.innerHTML = text;
-      clearBtn.classList.add("active");
-      showToast("Pasted from clipboard", "success");
-    } catch {
-      showToast("Clipboard not accessible", "error");
-    }
+  wpmSlider.addEventListener("input", () => {
+    wpmValue.textContent = wpmSlider.value;
   });
 
-  startBtn.addEventListener("click", () => startReading());
-
-  stopBtn.addEventListener("click", () => {
-    isPaused = true;
-    clearInterval(readingTimer);
-    resumeBtn.disabled = false;
-    stopBtn.disabled = true;
-    showToast("Paused", "info");
+  chunkSlider.addEventListener("input", () => {
+    chunkValue.textContent = chunkSlider.value;
   });
-
-  resumeBtn.addEventListener("click", resumeReading);
-
-  readSelectionBtn.addEventListener("click", () => {
-    const selection = window.getSelection().toString().trim();
-    if (!selection) {
-      showToast("No selection found", "error");
-      return;
-    }
-    startReading(selection);
-  });
-
-  wpmSlider.addEventListener(
-    "input",
-    () => (wpmValue.textContent = wpmSlider.value)
-  );
-  chunkSlider.addEventListener(
-    "input",
-    () => (chunkValue.textContent = chunkSlider.value)
-  );
 
   clearBtn.addEventListener("click", () => {
-    if (!textInput.value.trim()) return;
     textInput.value = "";
     readingArea.innerHTML = "";
-    clearBtn.classList.remove("active");
-    stopReading();
-    showToast("Cleared all text", "info");
+    printedDoc.textContent = "";
+    codeDisplay.textContent = "";
+    Prism.highlightElement(codeDisplay);
+    showToast("Cleared!", "info");
   });
 
-  /* === CATEGORY EVENTS === */
   addCategoryBtn.addEventListener("click", () => {
-    const newCat = categoryInput.value.trim();
-    if (!newCat) {
-      showToast("Enter a category name", "error");
-      return;
-    }
-    if (!categories.includes(newCat)) {
-      categories.push(newCat);
-      saveState();
+    const cat = categoryInput.value.trim();
+    if (!cat) return;
+    if (!categories.includes(cat)) {
+      categories.push(cat);
+      localStorage.setItem("categories", JSON.stringify(categories));
       renderCategories();
-      showToast("Category added", "success");
     }
     categoryInput.value = "";
   });
 
   categoryFilter.addEventListener("change", renderRecentDocs);
 
-  /* === INIT === */
+  darkToggle.addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+  });
+
+  /* === Init === */
   renderCategories();
   renderRecentDocs();
-  clearBtn.classList.remove("active");
+  updateCodeViewer("");
 
-  /* === SERVICE WORKER === */
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("./service-worker.js")
-      .then(() => console.log("✅ Service Worker registered"))
-      .catch(() => console.warn("⚠️ Service Worker missing"));
-  }
+  // Drag & Drop highlight
+  document.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    document.body.classList.add("drag-over");
+  });
+  document.addEventListener("dragleave", () => {
+    document.body.classList.remove("drag-over");
+  });
+  document.addEventListener("drop", (e) => {
+    e.preventDefault();
+    document.body.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === "text/plain") {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        textInput.value = ev.target.result;
+        updateCodeViewer(ev.target.result);
+        saveRecentDoc(file.name, ev.target.result);
+      };
+      reader.readAsText(file);
+    }
+  });
 });
