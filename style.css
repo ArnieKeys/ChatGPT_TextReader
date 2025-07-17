@@ -372,8 +372,8 @@ body.dark-mode .category-label {
   color: #aaa;
 }
 
-body.dark-mode .file-input {
-  color: #aaa;
+body.dark-mode #file-input {
+  color: #2d2d2d;
 }
 
 body.dark-mode #category-list li {
