@@ -159,16 +159,19 @@ function showToast(message, type = "info") {
 // ==========================
 // DOCUMENT FILTER & RENDER
 // ==========================
+
+// Filter documents by category and re-render
 function filterDocumentsByCategory(category) {
-  let filteredDocs = recentDocs;
-  if (category) {
-    filteredDocs = recentDocs.filter((doc) => doc.category === category);
-  }
+  const filteredDocs = category
+    ? recentDocs.filter((doc) => doc.category === category)
+    : recentDocs;
+
   renderRecentDocs(filteredDocs);
 }
 
+// Main renderer for recent docs list
 function renderRecentDocs(docs = recentDocs) {
-  recentList.innerHTML = "";
+  recentList.innerHTML = ""; // clear list
 
   if (docs.length === 0) {
     recentList.innerHTML = "<li>No documents found for this category</li>";
@@ -178,36 +181,74 @@ function renderRecentDocs(docs = recentDocs) {
   docs.forEach((doc, idx) => {
     const li = document.createElement("li");
 
-    const span = document.createElement("span");
-    span.textContent = doc.text.slice(0, 40) + "...";
-    span.classList.add("doc-title");
-    span.addEventListener("click", () => {
+    // ✅ Title (clickable to load doc)
+    const title = document.createElement("span");
+    title.textContent = doc.text.slice(0, 40) + "...";
+    title.classList.add("doc-title");
+    title.addEventListener("click", () => {
       textInput.value = doc.text;
       updateCodeView(doc.text);
     });
 
+    // ✅ Category label
     const catLabel = document.createElement("span");
     catLabel.classList.add("category-label");
     catLabel.textContent = `(${doc.category || "Uncategorized"})`;
 
+    // ✅ Buttons container
     const btnContainer = document.createElement("div");
     btnContainer.classList.add("doc-buttons");
 
+    // Save-to-Category Button
     const saveBtn = document.createElement("button");
-    saveBtn.textContent = "Save";
-    saveBtn.classList.add("btn-save");
+    saveBtn.classList.add("save-to-category-btn");
+    saveBtn.textContent = "Save to Category";
+    saveBtn.addEventListener("click", () => handleSaveToCategory(idx));
 
-    const delBtn = createDeleteButton();
+    // Delete Button
+    const delBtn = createDeleteButton("Delete");
     delBtn.addEventListener("click", () => removeRecentDoc(idx));
 
     btnContainer.appendChild(saveBtn);
     btnContainer.appendChild(delBtn);
 
-    li.appendChild(span);
+    // ✅ Assemble list item
+    li.appendChild(title);
     li.appendChild(catLabel);
     li.appendChild(btnContainer);
+
     recentList.appendChild(li);
   });
+}
+
+// ==========================
+// SAVE DOCUMENT TO CATEGORY
+// ==========================
+function handleSaveToCategory(docIndex) {
+  const targetCategory = categoryInput.value.trim();
+
+  if (!targetCategory) {
+    return showToast("⚠️ Please enter a category name first", "error");
+  }
+
+  // ✅ Create category if new
+  if (!categories.includes(targetCategory)) {
+    categories.push(targetCategory);
+    refreshCategoriesUI();
+    showToast(`✅ Created new category "${targetCategory}"`, "success");
+  }
+
+  // ✅ Update the document category
+  if (recentDocs[docIndex]) {
+    recentDocs[docIndex].category = targetCategory;
+    saveRecentDocs();
+    showToast(`📂 Document saved under "${targetCategory}"`, "success");
+  } else {
+    showToast("❌ Document not found!", "error");
+  }
+
+  // Clear input after save
+  categoryInput.value = "";
 }
 
 // ==========================
@@ -216,12 +257,12 @@ function renderRecentDocs(docs = recentDocs) {
 function loadRecentDocs() {
   const data = localStorage.getItem(RECENT_DOCS_KEY);
   recentDocs = data ? JSON.parse(data) : [];
-  filterDocumentsByCategory(categoryFilter.value);
+  if (categoryFilter) filterDocumentsByCategory(categoryFilter.value);
 }
 
 function saveRecentDocs() {
   localStorage.setItem(RECENT_DOCS_KEY, JSON.stringify(recentDocs));
-  filterDocumentsByCategory(categoryFilter.value);
+  if (categoryFilter) filterDocumentsByCategory(categoryFilter.value);
 }
 
 function saveRecentDoc(text) {
