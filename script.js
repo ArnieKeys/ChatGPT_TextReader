@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* === DOM ELEMENTS === */
   const readingArea = document.getElementById("reading-area");
   const textInput = document.getElementById("text-input");
+
   const pasteBtn = document.getElementById("paste-btn");
   const startBtn = document.getElementById("start-btn");
   const stopBtn = document.getElementById("stop-btn");
@@ -14,9 +15,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const chunkValue = document.getElementById("chunk-value");
   const assistiveToggle = document.getElementById("assistive-toggle");
 
-  const recentList = document.getElementById("recent-list");
   const fileInput = document.getElementById("file-input");
+  const clearBtn = document.createElement("button");
+  clearBtn.textContent = "Clear All";
+  clearBtn.className = "clear-btn";
+  document.body.appendChild(clearBtn);
 
+  const recentList = document.getElementById("recent-list");
   const addCategoryBtn = document.getElementById("add-category-btn");
   const categoryInput = document.getElementById("category-input");
   const categoryList = document.getElementById("category-list");
@@ -26,17 +31,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let words = [];
   let currentIndex = 0;
   let readingTimer = null;
-  let isPaused = false; // FIX for resume button
-  let toastLock = false; // Prevent duplicate alerts
+  let isPaused = false;
+  let isReading = false;
+  let toastLock = false;
 
   let recentDocs = JSON.parse(localStorage.getItem("recentDocs") || "[]");
   let categories = JSON.parse(localStorage.getItem("categories") || "[]");
 
   /* === UTILITIES === */
   const showToast = (message, type = "info") => {
-    if (toastLock) return; // prevent spamming
+    if (toastLock) return;
     toastLock = true;
-
     const toast = document.createElement("div");
     toast.className = `toast toast-${type} visible`;
     toast.textContent = message;
@@ -46,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       toast.classList.remove("visible");
       setTimeout(() => {
         toast.remove();
-        toastLock = false; // unlock after removal
+        toastLock = false;
       }, 300);
     }, 2000);
   };
@@ -54,6 +59,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveState = () => {
     localStorage.setItem("recentDocs", JSON.stringify(recentDocs));
     localStorage.setItem("categories", JSON.stringify(categories));
+  };
+
+  const toggleButtons = (reading) => {
+    isReading = reading;
+    startBtn.disabled = reading;
+    stopBtn.disabled = !reading;
+    resumeBtn.disabled = true;
+    clearBtn.classList.toggle("active", textInput.value.trim().length > 0);
   };
 
   const renderRecentDocs = () => {
@@ -69,10 +82,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const titleSpan = document.createElement("span");
       titleSpan.className = "doc-title";
       titleSpan.textContent = doc.title;
-
       titleSpan.addEventListener("click", () => {
         textInput.value = doc.content;
+        readingArea.innerHTML = doc.content;
         showToast(`Loaded: ${doc.title}`, "info");
+        clearBtn.classList.add("active");
       });
 
       const categoryLabel = document.createElement("span");
@@ -151,9 +165,38 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  /* === READING LOGIC === */
-  const startReading = () => {
-    const text = textInput.value.trim();
+  /* === READING CORE === */
+  const displayChunk = (chunkSize) => {
+    if (currentIndex >= words.length) {
+      stopReading();
+      return;
+    }
+    const chunk = words.slice(currentIndex, currentIndex + chunkSize).join(" ");
+    currentIndex += chunkSize;
+
+    const before = words.slice(0, currentIndex - chunkSize).join(" ");
+    const after = words.slice(currentIndex).join(" ");
+
+    readingArea.innerHTML = `${before} <span class="highlight">${chunk}</span> ${after}`;
+
+    if (assistiveToggle.checked) {
+      readingArea.classList.add("assistive-active");
+    } else {
+      readingArea.classList.remove("assistive-active");
+    }
+  };
+
+  const runReading = () => {
+    clearInterval(readingTimer);
+    const wpm = parseInt(wpmSlider.value, 10);
+    const chunkSize = parseInt(chunkSlider.value, 10);
+    const interval = (60 / wpm) * 1000 * chunkSize;
+
+    readingTimer = setInterval(() => displayChunk(chunkSize), interval);
+  };
+
+  const startReading = (customText) => {
+    const text = (customText || textInput.value).trim();
     if (!text) {
       showToast("Please enter or load text", "error");
       return;
@@ -165,40 +208,9 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleButtons(true);
   };
 
-  const runReading = () => {
-    clearInterval(readingTimer);
-
-    const wpm = parseInt(wpmSlider.value, 10);
-    const chunkSize = parseInt(chunkSlider.value, 10);
-    const interval = (60 / wpm) * 1000 * chunkSize;
-
-    readingTimer = setInterval(() => {
-      if (currentIndex >= words.length) {
-        stopReading();
-        return;
-      }
-
-      const chunk = words
-        .slice(currentIndex, currentIndex + chunkSize)
-        .join(" ");
-      currentIndex += chunkSize;
-
-      const before = words.slice(0, currentIndex - chunkSize).join(" ");
-      const after = words.slice(currentIndex).join(" ");
-
-      readingArea.innerHTML = `${before} <span class="highlight">${chunk}</span> ${after}`;
-
-      if (assistiveToggle.checked) {
-        readingArea.classList.add("assistive-active");
-      } else {
-        readingArea.classList.remove("assistive-active");
-      }
-    }, interval);
-  };
-
   const stopReading = () => {
     clearInterval(readingTimer);
-    isPaused = false;
+    isPaused = true;
     toggleButtons(false);
     readingArea.innerHTML = textInput.value;
   };
@@ -215,12 +227,6 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Resumed", "success");
   };
 
-  const toggleButtons = (reading) => {
-    startBtn.disabled = reading;
-    stopBtn.disabled = !reading;
-    resumeBtn.disabled = true;
-  };
-
   /* === FILE LOADING === */
   fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
@@ -228,12 +234,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       textInput.value = ev.target.result;
+      readingArea.innerHTML = ev.target.result;
+      clearBtn.classList.add("active");
       showToast(`Loaded file: ${file.name}`, "success");
     };
     reader.readAsText(file);
   });
 
-  /* === EVENTS === */
+  /* === BUTTON EVENTS === */
   pasteBtn.addEventListener("click", async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -242,13 +250,16 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       textInput.value = text;
+      readingArea.innerHTML = text;
+      clearBtn.classList.add("active");
       showToast("Pasted from clipboard", "success");
     } catch {
       showToast("Clipboard not accessible", "error");
     }
   });
 
-  startBtn.addEventListener("click", startReading);
+  startBtn.addEventListener("click", () => startReading());
+
   stopBtn.addEventListener("click", () => {
     isPaused = true;
     clearInterval(readingTimer);
@@ -256,6 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
     stopBtn.disabled = true;
     showToast("Paused", "info");
   });
+
   resumeBtn.addEventListener("click", resumeReading);
 
   readSelectionBtn.addEventListener("click", () => {
@@ -264,8 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("No selection found", "error");
       return;
     }
-    textInput.value = selection;
-    startReading();
+    startReading(selection);
   });
 
   wpmSlider.addEventListener(
@@ -277,7 +288,16 @@ document.addEventListener("DOMContentLoaded", () => {
     () => (chunkValue.textContent = chunkSlider.value)
   );
 
-  /* === CATEGORY MANAGEMENT === */
+  clearBtn.addEventListener("click", () => {
+    if (!textInput.value.trim()) return;
+    textInput.value = "";
+    readingArea.innerHTML = "";
+    clearBtn.classList.remove("active");
+    stopReading();
+    showToast("Cleared all text", "info");
+  });
+
+  /* === CATEGORY EVENTS === */
   addCategoryBtn.addEventListener("click", () => {
     const newCat = categoryInput.value.trim();
     if (!newCat) {
@@ -298,12 +318,13 @@ document.addEventListener("DOMContentLoaded", () => {
   /* === INIT === */
   renderCategories();
   renderRecentDocs();
+  clearBtn.classList.remove("active");
 
   /* === SERVICE WORKER === */
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker
       .register("./service-worker.js")
-      .then(() => console.log("Service Worker registered"))
-      .catch(() => console.warn("Service Worker not found"));
+      .then(() => console.log("✅ Service Worker registered"))
+      .catch(() => console.warn("⚠️ Service Worker missing"));
   }
 });
