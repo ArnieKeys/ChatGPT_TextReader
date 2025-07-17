@@ -66,66 +66,94 @@ function updateCodeView(text) {
 }
 
 // ==========================
-// CATEGORY RENDERING
+// CATEGORY HANDLING
 // ==========================
 
-// Update UI when categories change
-function renderCategories() {
-  const categoryList = document.getElementById("category-list");
-  const categoryFilter = document.getElementById("category-filter");
+document.addEventListener("DOMContentLoaded", () => {
+  const addCategoryBtn = document.getElementById("add-category-btn");
+  const categoryInput = document.getElementById("category-input");
 
-  categoryList.innerHTML = "";
-  categoryFilter.innerHTML = '<option value="">All Categories</option>';
+  // Initial render on load
+  refreshCategoriesUI();
 
-  categories.forEach((cat, index) => {
-    // Sidebar manager list
-    const li = document.createElement("li");
-    li.textContent = cat;
+  // ✅ Save category on button click
+  addCategoryBtn.addEventListener("click", () => {
+    const newCategory = categoryInput.value.trim();
 
-    // Delete button
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Delete";
-    deleteBtn.addEventListener("click", () => {
-      categories.splice(index, 1);
-      localStorage.setItem("categories", JSON.stringify(categories));
-      renderCategories();
-    });
+    if (!newCategory) {
+      showToast("⚠️ Please enter a category name", "error");
+      return;
+    }
 
-    li.appendChild(deleteBtn);
-    categoryList.appendChild(li);
+    if (!categories.includes(newCategory)) {
+      categories.push(newCategory);
+      refreshCategoriesUI();
+      showToast(`✅ Category "${newCategory}" saved!`, "success");
+    } else {
+      showToast(`ℹ️ Category "${newCategory}" already exists`, "info");
+    }
 
-    // Filter dropdown option
-    const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    categoryFilter.appendChild(opt);
+    categoryInput.value = "";
   });
-}
 
-// Handle Save Category button click
-document.getElementById("add-category-btn").addEventListener("click", () => {
-  const input = document.getElementById("category-input");
-  const newCategory = input.value.trim();
-
-  if (!newCategory) {
-    alert("Please enter a category name.");
-    return;
-  }
-  if (categories.includes(newCategory)) {
-    alert("Category already exists.");
-    return;
-  }
-
-  categories.push(newCategory);
-  localStorage.setItem("categories", JSON.stringify(categories));
-  renderCategories();
-
-  input.value = ""; // clear input
+  // ✅ Optional: Save on Enter key press
+  categoryInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") addCategoryBtn.click();
+  });
 });
 
+// ✅ Single source of truth for refreshing UI & saving
 function refreshCategoriesUI() {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
   renderCategories();
+}
+
+// ✅ Render categories in filter dropdown & manager list
+function renderCategories() {
+  const categoryFilter = document.getElementById("category-filter");
+  const categoryList = document.getElementById("category-list");
+
+  if (!categoryFilter || !categoryList) return;
+
+  // Filter dropdown
+  categoryFilter.innerHTML = `<option value="">All Categories</option>`;
+  categories.forEach((cat) => {
+    const option = document.createElement("option");
+    option.value = cat;
+    option.textContent = cat;
+    categoryFilter.appendChild(option);
+  });
+
+  // Category manager list
+  categoryList.innerHTML = "";
+  categories.forEach((cat) => {
+    const li = document.createElement("li");
+    li.textContent = cat;
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "✖";
+    delBtn.addEventListener("click", () => deleteCategory(cat));
+
+    li.appendChild(delBtn);
+    categoryList.appendChild(li);
+  });
+}
+
+// ✅ Delete a category and refresh
+function deleteCategory(cat) {
+  categories = categories.filter((c) => c !== cat);
+  refreshCategoriesUI();
+  showToast(`🗑️ Deleted category "${cat}"`, "info");
+}
+
+// ✅ Simple reusable toast
+function showToast(message, type = "info") {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type} visible`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.remove("visible"), 2000);
+  setTimeout(() => toast.remove(), 2500);
 }
 
 // ==========================
