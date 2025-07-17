@@ -58,46 +58,70 @@
       <div class="content-area">
         <!-- ✅ Main content FIRST (for mobile priority) -->
         <main>
-          <!-- ✅ Reading area -->
-          <div class="reading-area" id="reading-area"></div>
-
           <!-- ✅ All controls in one place -->
           <div class="controls">
             <label for="file-input">Load from file</label>
             <input type="file" id="file-input" accept=".txt" />
-            <button id="paste-btn">Paste Text</button>
-            <button id="start-btn">Start Reading</button>
-            <button id="stop-btn" disabled>Stop</button>
-            <button id="resume-btn" disabled>Resume</button>
-            <button id="read-selection-btn">Read From Selection</button>
-            <label>
-              <input type="checkbox" id="assistive-toggle" /> Assistive Mode
-            </label>
-
-            <!-- ✅ Sliders -->
-            <div>
-              <span>Words per minute:</span>
-              <input
-                type="range"
-                min="60"
-                max="600"
-                value="200"
-                id="wpm-slider"
-              />
-              <span id="wpm-value">200</span>
-            </div>
-            <div>
-              <span>Words per chunk:</span>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value="1"
-                id="chunk-slider"
-              />
-              <span id="chunk-value">1</span>
-            </div>
           </div>
+          <main>
+            <!-- Toolbar: all main controls -->
+            <div class="toolbar">
+              <button id="paste-btn" type="button">Paste Text</button>
+              <button id="start-btn" type="button">Start Reading</button>
+              <button id="stop-btn" type="button" disabled>Stop</button>
+              <button id="resume-btn" type="button" disabled>Resume</button>
+              <button id="read-selection-btn" type="button">
+                Read From Selection
+              </button>
+
+              <label class="assistive-toggle-group" for="assistive-toggle">
+                <input type="checkbox" id="assistive-toggle" />
+                Assistive Mode
+              </label>
+
+              <div class="slider-group">
+                <label for="wpm-slider">Words per minute</label>
+                <input
+                  type="range"
+                  id="wpm-slider"
+                  min="60"
+                  max="600"
+                  value="200"
+                  step="10"
+                />
+                <div class="slider-value" id="wpm-value">200</div>
+              </div>
+
+              <div class="slider-group">
+                <label for="chunk-slider">Words per chunk</label>
+                <input
+                  type="range"
+                  id="chunk-slider"
+                  min="1"
+                  max="10"
+                  value="1"
+                  step="1"
+                />
+                <div class="slider-value" id="chunk-value">1</div>
+              </div>
+
+              <label for="file-input" class="file-label">
+                Load from file
+                <input
+                  type="file"
+                  id="file-input"
+                  accept=".txt"
+                  style="display: none"
+                />
+              </label>
+            </div>
+
+            <!-- Reading area -->
+            <div class="reading-area" id="reading-area"></div>
+
+            <!-- Sidebar, textarea, code viewer etc. remain unchanged -->
+            ...
+          </main>
 
           <!-- ✅ Recent Docs + Categories BEFORE the text -->
           <aside class="sidebar">
