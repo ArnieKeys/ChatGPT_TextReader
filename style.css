@@ -7,6 +7,11 @@ body {
   line-height: 1.5;
   font-size: 16px;
 }
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto; /* center */
+  padding: 20px; /* add breathing space */
+}
 
 /* Reading Area */
 #reading-area {
@@ -564,4 +569,27 @@ body.dark-mode #category-list li:hover {
     font-size: 0.8rem;
     padding: 8px 10px;
   }
+}
+
+.sidebar {
+  padding: 1rem;
+}
+
+#category-manager {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ddd;
+}
+
+#category-manager h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+#category-manager input {
+  width: 100%;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }

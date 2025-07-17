@@ -25,6 +25,8 @@ const categoryList = document.getElementById("category-list");
 let words = [];
 let currentWord = 0;
 let readingInterval = null;
+let isPaused = false;
+let readingIndex = 0;
 let assistiveMode = false;
 let recentDocs = [];
 let currentDocument = {};
@@ -225,60 +227,54 @@ function showFullText() {
   readingArea.textContent = textInput.value;
 }
 
-function startReading(fromIndex = null) {
-  const text = textInput.value.trim();
-  if (!text) {
-    alert("Please enter or load text before reading.");
-    return;
-  }
+function startReading() {
+  const text = document.getElementById("text-input").value.trim();
+  if (!text) return;
 
-  words = text
-    .replace(/[\n\r]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ");
-  currentWord =
-    fromIndex !== null && fromIndex >= 0 && fromIndex < words.length
-      ? fromIndex
-      : 0;
-
-  showWord();
-
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  wpmSlider.disabled = true;
-
-  const interval = 60000 / parseInt(wpmSlider.value, 10);
-  if (readingInterval) clearInterval(readingInterval);
-
-  readingInterval = setInterval(() => {
-    currentWord += chunkSize;
-    if (currentWord >= words.length) {
-      stopReading();
-    } else {
-      showWord();
-    }
-  }, interval);
-
-  lockClearWhileReading(true);
+  words = text.split(/\s+/);
+  readingIndex = 0;
+  isPaused = false;
+  resumeReading(); // start fresh
 }
 
 function stopReading() {
   clearInterval(readingInterval);
   readingInterval = null;
+  isPaused = true;
 
-  showFullText();
-
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  wpmSlider.disabled = false;
-
-  localStorage.setItem(LAST_POSITION_KEY, currentWord);
+  // Enable Resume button
   document.getElementById("resume-btn").disabled = false;
-
-  lockClearWhileReading(false);
+  document.getElementById("start-btn").disabled = false;
 }
 
+function resumeReading() {
+  if (readingInterval) return; // avoid multiple intervals
+
+  const wpm = parseInt(document.getElementById("wpm-slider").value, 10);
+  const chunkSize = parseInt(document.getElementById("chunk-slider").value, 10);
+  const delay = 60000 / wpm;
+
+  const readingArea = document.getElementById("reading-area");
+  const chunkedWords = chunkSize > 1 ? chunkSize : 1;
+
+  readingInterval = setInterval(() => {
+    if (readingIndex >= words.length) {
+      clearInterval(readingInterval);
+      readingInterval = null;
+      return;
+    }
+
+    const chunk = words
+      .slice(readingIndex, readingIndex + chunkedWords)
+      .join(" ");
+    readingArea.innerHTML = `<span class="highlight">${chunk}</span>`;
+    readingIndex += chunkedWords;
+  }, delay);
+
+  // Update button states
+  document.getElementById("resume-btn").disabled = true;
+  document.getElementById("stop-btn").disabled = false;
+}
 // ==========================
 // CLEAR BUTTON
 // ==========================
