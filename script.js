@@ -1,40 +1,28 @@
 // ==========================
-// Elements
+// Element References
 // ==========================
-const textInput = document.getElementById("text-input");
-const fileInput = document.getElementById("file-input");
-const pasteBtn = document.getElementById("paste-btn");
-const startBtn = document.getElementById("start-btn");
-const stopBtn = document.getElementById("stop-btn");
-const readingArea = document.getElementById("reading-area");
-const wpmSlider = document.getElementById("wpm-slider");
-const wpmValue = document.getElementById("wpm-value");
-const assistiveToggle = document.getElementById("assistive-toggle");
-const recentList = document.getElementById("recent-list");
-const codeDisplay = document.getElementById("code-display");
-const chunkSlider = document.getElementById("chunk-slider");
-const chunkValue = document.getElementById("chunk-value");
-const categoryInput = document.getElementById("category-input");
-const addCategoryBtn = document.getElementById("add-category-btn");
-const categoryFilter = document.getElementById("category-filter");
-const categoryList = document.getElementById("category-list");
+const $ = (id) => document.getElementById(id);
+
+const textInput = $("text-input");
+const fileInput = $("file-input");
+const pasteBtn = $("paste-btn");
+const startBtn = $("start-btn");
+const stopBtn = $("stop-btn");
+const readingArea = $("reading-area");
+const wpmSlider = $("wpm-slider");
+const wpmValue = $("wpm-value");
+const chunkSlider = $("chunk-slider");
+const chunkValue = $("chunk-value");
+const assistiveToggle = $("assistive-toggle");
+const recentList = $("recent-list");
+const codeDisplay = $("code-display");
+const categoryInput = $("category-input");
+const addCategoryBtn = $("add-category-btn");
+const categoryFilter = $("category-filter");
+const categoryList = $("category-list");
 
 // ==========================
-// State
-// ==========================
-let words = [];
-let currentWord = 0;
-let readingInterval = null;
-let isPaused = false;
-let readingIndex = 0;
-let assistiveMode = false;
-let recentDocs = [];
-let currentDocument = {};
-let chunkSize = 1;
-let categories = JSON.parse(localStorage.getItem("categories") || "[]");
-
-// ==========================
-// Storage Keys
+// Constants
 // ==========================
 const LAST_POSITION_KEY = "text_reader_last_position";
 const LAST_TEXT_KEY = "text_reader_last_text";
@@ -43,236 +31,166 @@ const RECENT_DOCS_KEY = "text_reader_recent_docs";
 const CATEGORIES_KEY = "text_reader_categories";
 
 // ==========================
-// UI HELPERS
+// State
 // ==========================
-function createDeleteButton(label = "Delete") {
-  const btn = document.createElement("button");
-  btn.textContent = label;
-  btn.classList.add("btn-delete");
-  return btn;
-}
+let words = [],
+  currentWord = 0;
+let readingInterval = null;
+let isPaused = false;
+let assistiveMode = false;
+let chunkSize = 1;
+let recentDocs = JSON.parse(localStorage.getItem(RECENT_DOCS_KEY) || "[]");
+let categories = JSON.parse(localStorage.getItem(CATEGORIES_KEY) || "[]");
 
-function escapeHtml(html) {
+// ==========================
+// Utility Functions
+// ==========================
+const escapeHtml = (str) => {
   const div = document.createElement("div");
-  div.textContent = html;
+  div.textContent = str;
   return div.innerHTML;
+};
+
+const showToast = (msg, type = "info") => {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add("visible"), 50);
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+};
+
+const updateCodeView = (text) => {
+  if (!codeDisplay) return;
+  codeDisplay.innerHTML = escapeHtml(text);
+  if (typeof Prism !== "undefined") Prism.highlightElement(codeDisplay);
+};
+
+// ==========================
+// Reading Controls
+// ==========================
+function showWord() {
+  const chunk = words.slice(currentWord, currentWord + chunkSize).join(" ");
+  readingArea.innerHTML = `<span class="highlight">${chunk}</span>`;
+  if (assistiveMode)
+    readingArea.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-function updateCodeView(text) {
-  if (codeDisplay) {
-    codeDisplay.innerHTML = escapeHtml(text);
-    if (typeof Prism !== "undefined") Prism.highlightElement(codeDisplay);
-  }
+function beginReading(text, index = 0) {
+  words = text.trim().replace(/\s+/g, " ").split(" ");
+  currentWord = index;
+  showWord();
+  const interval = 60000 / parseInt(wpmSlider.value, 10);
+  readingInterval = setInterval(() => {
+    currentWord += chunkSize;
+    if (currentWord >= words.length) stopReading();
+    else showWord();
+  }, interval);
+  lockClearWhileReading(true);
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+}
+
+function startReading(startIndex = 0) {
+  const text = textInput.value.trim();
+  if (!text) return alert("Please enter or load text before reading.");
+  beginReading(text, startIndex);
+}
+
+function stopReading() {
+  clearInterval(readingInterval);
+  readingInterval = null;
+  readingArea.textContent = textInput.value;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  autoSaveReadingState();
+  lockClearWhileReading(false);
 }
 
 // ==========================
-// CATEGORY HANDLING
+// Clear Button
 // ==========================
+const clearBtn = document.createElement("button");
+clearBtn.textContent = "🧹 Clear All";
+clearBtn.classList.add("clear-btn");
+clearBtn.disabled = true;
+document.body.appendChild(clearBtn);
 
-document.addEventListener("DOMContentLoaded", () => {
-  const addCategoryBtn = document.getElementById("add-category-btn");
-  const categoryInput = document.getElementById("category-input");
-
-  // Initial render on load
-  refreshCategoriesUI();
-
-  // ✅ Save category on button click
-  addCategoryBtn.addEventListener("click", () => {
-    const newCategory = categoryInput.value.trim();
-
-    if (!newCategory) {
-      showToast("⚠️ Please enter a category name", "error");
-      return;
-    }
-
-    if (!categories.includes(newCategory)) {
-      categories.push(newCategory);
-      refreshCategoriesUI();
-      showToast(`✅ Category "${newCategory}" saved!`, "success");
-    } else {
-      showToast(`ℹ️ Category "${newCategory}" already exists`, "info");
-    }
-
-    categoryInput.value = "";
-  });
-
-  // ✅ Optional: Save on Enter key press
-  categoryInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") addCategoryBtn.click();
-  });
+clearBtn.addEventListener("click", () => {
+  if (!confirm("⚠️ Clear all text?")) return;
+  stopReading();
+  textInput.value = "";
+  readingArea.textContent = "";
+  updateCodeView("");
+  words = [];
+  currentWord = 0;
+  localStorage.removeItem(LAST_TEXT_KEY);
+  localStorage.removeItem(LAST_POSITION_KEY);
+  setClearBtnState(false);
 });
 
-// ✅ Single source of truth for refreshing UI & saving
+function setClearBtnState(enabled) {
+  clearBtn.disabled = !enabled;
+  clearBtn.classList.toggle("active", enabled);
+}
+
+function lockClearWhileReading(lock) {
+  setClearBtnState(!lock && textInput.value.trim().length > 0);
+}
+
+function enableClearIfNeeded() {
+  setClearBtnState(textInput.value.trim().length > 0);
+}
+
+// ==========================
+// Category Functions
+// ==========================
 function refreshCategoriesUI() {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
   renderCategories();
 }
 
-// ✅ Render categories in filter dropdown & manager list
 function renderCategories() {
-  const categoryFilter = document.getElementById("category-filter");
-  const categoryList = document.getElementById("category-list");
-
-  if (!categoryFilter || !categoryList) return;
-
-  // Filter dropdown
   categoryFilter.innerHTML = `<option value="">All Categories</option>`;
   categories.forEach((cat) => {
-    const option = document.createElement("option");
-    option.value = cat;
-    option.textContent = cat;
-    categoryFilter.appendChild(option);
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    categoryFilter.appendChild(opt);
   });
 
-  // Category manager list
   categoryList.innerHTML = "";
   categories.forEach((cat) => {
     const li = document.createElement("li");
     li.textContent = cat;
-
     const delBtn = document.createElement("button");
     delBtn.textContent = "✖";
-    delBtn.addEventListener("click", () => deleteCategory(cat));
-
+    delBtn.addEventListener("click", () => {
+      categories = categories.filter((c) => c !== cat);
+      refreshCategoriesUI();
+      showToast(`🗑️ Deleted category "${cat}"`, "info");
+    });
     li.appendChild(delBtn);
     categoryList.appendChild(li);
   });
 }
 
-// ✅ Delete a category and refresh
-function deleteCategory(cat) {
-  categories = categories.filter((c) => c !== cat);
-  refreshCategoriesUI();
-  showToast(`🗑️ Deleted category "${cat}"`, "info");
-}
-
-// ✅ Simple reusable toast
-function showToast(message, type = "info") {
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type} visible`;
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.classList.remove("visible"), 2000);
-  setTimeout(() => toast.remove(), 2500);
-}
-
 // ==========================
-// DOCUMENT FILTER & RENDER
+// Document Management
 // ==========================
-
-// Filter documents by category and re-render
-function filterDocumentsByCategory(category) {
-  const filteredDocs = category
-    ? recentDocs.filter((doc) => doc.category === category)
-    : recentDocs;
-
-  renderRecentDocs(filteredDocs);
-}
-
-// Main renderer for recent docs list
-function renderRecentDocs(docs = recentDocs) {
-  recentList.innerHTML = ""; // clear list
-
-  if (docs.length === 0) {
-    recentList.innerHTML = "<li>No documents found for this category</li>";
-    return;
-  }
-
-  docs.forEach((doc, idx) => {
-    const li = document.createElement("li");
-
-    // ✅ Title (clickable to load doc)
-    const title = document.createElement("span");
-    title.textContent = doc.text.slice(0, 40) + "...";
-    title.classList.add("doc-title");
-    title.addEventListener("click", () => {
-      textInput.value = doc.text;
-      updateCodeView(doc.text);
-    });
-
-    // ✅ Category label
-    const catLabel = document.createElement("span");
-    catLabel.classList.add("category-label");
-    catLabel.textContent = `(${doc.category || "Uncategorized"})`;
-
-    // ✅ Buttons container
-    const btnContainer = document.createElement("div");
-    btnContainer.classList.add("doc-buttons");
-
-    // Save-to-Category Button
-    const saveBtn = document.createElement("button");
-    saveBtn.classList.add("save-to-category-btn");
-    saveBtn.textContent = "Save to Category";
-    saveBtn.addEventListener("click", () => handleSaveToCategory(idx));
-
-    // Delete Button
-    const delBtn = createDeleteButton("Delete");
-    delBtn.addEventListener("click", () => removeRecentDoc(idx));
-
-    btnContainer.appendChild(saveBtn);
-    btnContainer.appendChild(delBtn);
-
-    // ✅ Assemble list item
-    li.appendChild(title);
-    li.appendChild(catLabel);
-    li.appendChild(btnContainer);
-
-    recentList.appendChild(li);
-  });
-}
-
-// ==========================
-// SAVE DOCUMENT TO CATEGORY
-// ==========================
-function handleSaveToCategory(docIndex) {
-  const targetCategory = categoryInput.value.trim();
-
-  if (!targetCategory) {
-    return showToast("⚠️ Please enter a category name first", "error");
-  }
-
-  // ✅ Create category if new
-  if (!categories.includes(targetCategory)) {
-    categories.push(targetCategory);
-    refreshCategoriesUI();
-    showToast(`✅ Created new category "${targetCategory}"`, "success");
-  }
-
-  // ✅ Update the document category
-  if (recentDocs[docIndex]) {
-    recentDocs[docIndex].category = targetCategory;
-    saveRecentDocs();
-    showToast(`📂 Document saved under "${targetCategory}"`, "success");
-  } else {
-    showToast("❌ Document not found!", "error");
-  }
-
-  // Clear input after save
-  categoryInput.value = "";
-}
-
-// ==========================
-// DOCUMENT STORAGE
-// ==========================
-function loadRecentDocs() {
-  const data = localStorage.getItem(RECENT_DOCS_KEY);
-  recentDocs = data ? JSON.parse(data) : [];
-  if (categoryFilter) filterDocumentsByCategory(categoryFilter.value);
-}
-
 function saveRecentDocs() {
   localStorage.setItem(RECENT_DOCS_KEY, JSON.stringify(recentDocs));
-  if (categoryFilter) filterDocumentsByCategory(categoryFilter.value);
+  filterDocumentsByCategory(categoryFilter.value);
 }
 
 function saveRecentDoc(text) {
-  const selectedCategory = categoryFilter.value || "Uncategorized";
-  const doc = { text, ts: Date.now(), category: selectedCategory };
-
-  // Avoid duplicates
+  const category = categoryFilter.value || "Uncategorized";
+  const doc = { text, ts: Date.now(), category };
   recentDocs = recentDocs.filter((d) => d.text !== text);
   recentDocs.unshift(doc);
-
   saveRecentDocs();
 }
 
@@ -281,189 +199,183 @@ function removeRecentDoc(index) {
   saveRecentDocs();
 }
 
-// ==========================
-// CATEGORY SAVE
-// ==========================
-function saveDocumentToCategory(text) {
-  let selectedCategory = categoryFilter.value || prompt("Enter category name:");
-  if (!selectedCategory) return;
-
-  if (!categories.includes(selectedCategory)) {
-    categories.push(selectedCategory);
-    refreshCategoriesUI();
+function renderRecentDocs(docs = recentDocs) {
+  recentList.innerHTML = "";
+  if (docs.length === 0) {
+    recentList.innerHTML = "<li>No documents found</li>";
+    return;
   }
 
-  const docIndex = recentDocs.findIndex((doc) => doc.text === text);
-  if (docIndex !== -1) {
-    recentDocs[docIndex].category = selectedCategory;
-    saveRecentDocs();
-  } else {
-    alert("Document not found.");
-  }
+  docs.forEach((doc, i) => {
+    const li = document.createElement("li");
+    const title = document.createElement("span");
+    title.textContent = doc.text.slice(0, 40) + "...";
+    title.classList.add("doc-title");
+    title.addEventListener("click", () => {
+      textInput.value = doc.text;
+      updateCodeView(doc.text);
+      enableClearIfNeeded();
+    });
+
+    const cat = document.createElement("span");
+    cat.classList.add("category-label");
+    cat.textContent = `(${doc.category})`;
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", () => removeRecentDoc(i));
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save to Category";
+    saveBtn.addEventListener("click", () => {
+      let cat = prompt("Enter category name:");
+      if (!cat) return showToast("⚠️ No category entered", "error");
+      if (!categories.includes(cat)) {
+        categories.push(cat);
+        refreshCategoriesUI();
+      }
+      doc.category = cat;
+      saveRecentDocs();
+      showToast(`📂 Saved to "${cat}"`, "success");
+    });
+
+    const btns = document.createElement("div");
+    btns.className = "doc-buttons";
+    btns.append(saveBtn, delBtn);
+
+    li.append(title, cat, btns);
+    recentList.appendChild(li);
+  });
+}
+
+function filterDocumentsByCategory(cat) {
+  const docs = cat
+    ? recentDocs.filter((doc) => doc.category === cat)
+    : recentDocs;
+  renderRecentDocs(docs);
 }
 
 // ==========================
-// READER CONTROLS
+// File Handling
 // ==========================
-function showWord() {
-  const chunk = words.slice(currentWord, currentWord + chunkSize).join(" ");
-  readingArea.innerHTML = `<span class="highlight">${chunk}</span>`;
-  if (assistiveMode) {
-    readingArea.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-}
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    textInput.value = evt.target.result;
+    updateCodeView(evt.target.result);
+    saveRecentDoc(evt.target.result);
+    enableClearIfNeeded();
+  };
+  reader.readAsText(file);
+  fileInput.value = "";
+});
 
-function showFullText() {
-  readingArea.textContent = textInput.value;
-}
-
-function startReading() {
-  const text = document.getElementById("text-input").value.trim();
-  if (!text) return;
-
-  words = text.split(/\s+/);
-  readingIndex = 0;
-  isPaused = false;
-  resumeReading(); // start fresh
-}
-
-function stopReading() {
-  clearInterval(readingInterval);
-  readingInterval = null;
-  isPaused = true;
-
-  // Enable Resume button
-  document.getElementById("resume-btn").disabled = false;
-  document.getElementById("start-btn").disabled = false;
-}
-
-function resumeReading() {
-  if (readingInterval) return; // avoid multiple intervals
-
-  const wpm = parseInt(document.getElementById("wpm-slider").value, 10);
-  const chunkSize = parseInt(document.getElementById("chunk-slider").value, 10);
-  const delay = 60000 / wpm;
-
-  const readingArea = document.getElementById("reading-area");
-  const chunkedWords = chunkSize > 1 ? chunkSize : 1;
-
-  readingInterval = setInterval(() => {
-    if (readingIndex >= words.length) {
-      clearInterval(readingInterval);
-      readingInterval = null;
-      return;
+// ==========================
+// Clipboard / Drag & Drop
+// ==========================
+pasteBtn.addEventListener("click", async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      textInput.value = text;
+      updateCodeView(text);
+      saveRecentDoc(text);
+      enableClearIfNeeded();
     }
-
-    const chunk = words
-      .slice(readingIndex, readingIndex + chunkedWords)
-      .join(" ");
-    readingArea.innerHTML = `<span class="highlight">${chunk}</span>`;
-    readingIndex += chunkedWords;
-  }, delay);
-
-  // Update button states
-  document.getElementById("resume-btn").disabled = true;
-  document.getElementById("stop-btn").disabled = false;
-}
-// ==========================
-// CLEAR BUTTON
-// ==========================
-const clearBtn = document.createElement("button");
-clearBtn.textContent = "🧹 Clear All";
-clearBtn.classList.add("clear-btn");
-clearBtn.disabled = true;
-
-function setClearBtnState(enable) {
-  clearBtn.disabled = !enable;
-  clearBtn.classList.toggle("active", enable);
-}
-
-clearBtn.addEventListener("click", () => {
-  if (clearBtn.disabled) return;
-  const confirmed = confirm("⚠️ Clear all text?");
-  if (confirmed) {
-    stopReading();
-    textInput.value = "";
-    readingArea.textContent = "";
-    updateCodeView("");
-    words = [];
-    currentWord = 0;
-    localStorage.removeItem(LAST_TEXT_KEY);
-    localStorage.removeItem(LAST_POSITION_KEY);
-    setClearBtnState(false);
+  } catch {
+    alert("Clipboard access denied.");
   }
 });
 
-function lockClearWhileReading(lock) {
-  if (lock) {
-    setClearBtnState(false);
-  } else {
-    const hasText = textInput.value.trim().length > 0;
-    setClearBtnState(hasText);
+function setupDragDrop() {
+  document.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    document.body.classList.add("drag-over");
+  });
+
+  document.addEventListener("dragleave", () => {
+    document.body.classList.remove("drag-over");
+  });
+
+  document.addEventListener("drop", (e) => {
+    e.preventDefault();
+    document.body.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        textInput.value = evt.target.result;
+        updateCodeView(evt.target.result);
+        saveRecentDoc(evt.target.result);
+        enableClearIfNeeded();
+      };
+      reader.readAsText(file);
+    }
+  });
+}
+
+// ==========================
+// Assistive & State Restore
+// ==========================
+function applyAssistiveMode(enabled) {
+  assistiveMode = enabled;
+  assistiveToggle.checked = enabled;
+  readingArea.classList.toggle("assistive-active", enabled);
+  localStorage.setItem(ASSIST_MODE_KEY, JSON.stringify(enabled));
+}
+
+function autoSaveReadingState() {
+  if (readingInterval) {
+    localStorage.setItem(LAST_TEXT_KEY, textInput.value);
+    localStorage.setItem(LAST_POSITION_KEY, currentWord);
+  }
+}
+
+function restoreSavedText() {
+  const saved = localStorage.getItem(LAST_TEXT_KEY);
+  const pos = parseInt(localStorage.getItem(LAST_POSITION_KEY), 10);
+  if (saved) {
+    textInput.value = saved;
+    updateCodeView(saved);
+    if (!isNaN(pos)) {
+      $("resume-btn").disabled = false;
+      $("resume-btn").addEventListener("click", () => startReading(pos));
+    }
   }
 }
 
 // ==========================
-// INIT FUNCTION
+// Init Function
 // ==========================
 function init() {
-  // Load assistive mode
   assistiveMode = JSON.parse(localStorage.getItem(ASSIST_MODE_KEY) || "false");
-  assistiveToggle.checked = assistiveMode;
-  readingArea.classList.toggle("assistive-bg", assistiveMode);
+  applyAssistiveMode(assistiveMode);
+  restoreSavedText();
+  refreshCategoriesUI();
+  renderRecentDocs();
 
-  renderCategories();
-  loadRecentDocs();
-
-  // Resume state
-  if (localStorage.getItem(LAST_POSITION_KEY)) {
-    document.getElementById("resume-btn").disabled = false;
-  }
-
-  // Add clear button to DOM
-  document.body.appendChild(clearBtn);
-
-  // Event listeners
-  categoryFilter.addEventListener("change", () =>
-    filterDocumentsByCategory(categoryFilter.value)
-  );
+  categoryFilter.addEventListener("change", () => {
+    filterDocumentsByCategory(categoryFilter.value);
+  });
 
   addCategoryBtn.addEventListener("click", () => {
-    const category = categoryInput.value.trim();
-    if (category && !categories.includes(category)) {
-      categories.push(category);
-      categoryInput.value = "";
+    const cat = categoryInput.value.trim();
+    if (!cat) return showToast("⚠️ Please enter a category", "error");
+    if (!categories.includes(cat)) {
+      categories.push(cat);
       refreshCategoriesUI();
+      showToast(`✅ Added "${cat}"`, "success");
     } else {
-      alert("Enter a valid or unique category.");
+      showToast(`ℹ️ "${cat}" already exists`, "info");
     }
+    categoryInput.value = "";
   });
 
-  fileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      textInput.value = evt.target.result;
-      saveRecentDoc(textInput.value);
-      updateCodeView(textInput.value);
-    };
-    reader.readAsText(file);
-    fileInput.value = "";
-  });
-
-  pasteBtn.addEventListener("click", async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        textInput.value = text;
-        saveRecentDoc(text);
-        updateCodeView(text);
-      }
-    } catch {
-      alert("Clipboard access denied.");
-    }
-  });
+  assistiveToggle.addEventListener("change", () =>
+    applyAssistiveMode(assistiveToggle.checked)
+  );
 
   wpmSlider.addEventListener("input", () => {
     wpmValue.textContent = wpmSlider.value;
@@ -474,576 +386,31 @@ function init() {
     chunkValue.textContent = chunkSize;
   });
 
-  assistiveToggle.addEventListener("change", () => {
-    assistiveMode = assistiveToggle.checked;
-    readingArea.classList.toggle("assistive-bg", assistiveMode);
-    localStorage.setItem(ASSIST_MODE_KEY, assistiveMode);
-  });
-
   textInput.addEventListener("input", () => {
-    const hasText = textInput.value.trim().length > 0;
-    if (!readingInterval) setClearBtnState(hasText);
+    if (!readingInterval) enableClearIfNeeded();
   });
 
   startBtn.addEventListener("click", () => startReading());
   stopBtn.addEventListener("click", () => stopReading());
+
+  setupDragDrop();
+  setInterval(autoSaveReadingState, 10000);
 }
 
 // ==========================
-// BOOTSTRAP
+// Dark Mode Toggle
 // ==========================
-document.addEventListener("DOMContentLoaded", init);
-
-// ==========================
-// PWA INSTALL PROMPT
-// ==========================
-let deferredPrompt = null;
-
-function setupInstallPrompt() {
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-
-    const installBtn = document.createElement("button");
-    installBtn.textContent = "📲 Install App";
-    installBtn.classList.add("btn-install");
-    installBtn.addEventListener("click", async () => {
-      installBtn.remove();
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(
-        outcome === "accepted" ? "User installed app" : "User dismissed install"
-      );
-      deferredPrompt = null;
-    });
-
-    document.body.appendChild(installBtn);
-  });
-}
-
-// ==========================
-// INSTALL BANNER HELPERS
-// ==========================
-function isInStandaloneMode() {
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true
-  );
-}
-
-function showInstallBanner() {
-  if (isInStandaloneMode() || localStorage.getItem("installPromptDismissed"))
-    return;
-
-  const banner = document.createElement("div");
-  banner.classList.add("install-banner");
-
-  const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  banner.innerHTML = isIOS
-    ? `📲 Add to Home Screen: <br>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>`
-    : `📲 Install this app: <br>Tap <strong>⋮ Menu</strong> → <strong>Add to Home Screen</strong>`;
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "×";
-  closeBtn.classList.add("btn-banner-close");
-
-  closeBtn.addEventListener("click", () => {
-    banner.remove();
-    localStorage.setItem("installPromptDismissed", "true");
-  });
-
-  banner.appendChild(closeBtn);
-  document.body.appendChild(banner);
-
-  // Optional auto-hide
-  setTimeout(() => banner.remove(), 10000);
-}
-
-// ==========================
-// FB/INSTAGRAM IN-APP BROWSER WARNING
-// ==========================
-function isFacebookBrowser() {
-  const ua = navigator.userAgent || navigator.vendor || window.opera;
-  return ua.includes("FBAN") || ua.includes("FBAV") || ua.includes("Instagram");
-}
-
-function showFacebookWarning() {
-  if (!isFacebookBrowser()) return;
-
-  const fbBanner = document.createElement("div");
-  fbBanner.classList.add("install-banner", "fb-warning");
-  fbBanner.innerHTML = `
-    ⚠️ You're viewing this inside Facebook/Instagram.<br>
-    <b>Tap ⋮ or "Open in Browser"</b> for best experience.
-  `;
-  document.body.appendChild(fbBanner);
-
-  // Remove after 15s to avoid clutter
-  setTimeout(() => fbBanner.remove(), 15000);
-}
-
-// ==========================
-// DRAG & DROP SUPPORT
-// ==========================
-function handleDroppedFile(file) {
-  if (!file.type.startsWith("text/")) {
-    alert("Please drop a plain text file.");
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    const text = evt.target.result;
-    textInput.value = text;
-    saveRecentDoc(text);
-    updateCodeView(text);
-  };
-  reader.readAsText(file);
-}
-
-function setupDragAndDrop() {
-  document.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    document.body.classList.add("drag-over");
-  });
-  document.addEventListener("dragleave", (e) => {
-    e.preventDefault();
-    document.body.classList.remove("drag-over");
-  });
-  document.addEventListener("drop", (e) => {
-    e.preventDefault();
-    document.body.classList.remove("drag-over");
-    const file = e.dataTransfer.files[0];
-    if (file) handleDroppedFile(file);
-  });
-}
-
-// ==========================
-// SERVICE WORKER HANDLER
-// ==========================
-function setupServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .getRegistrations()
-      .then((regs) => regs.forEach((reg) => reg.unregister())) // Dev: always unregister first
-      .finally(() => {
-        navigator.serviceWorker.register("/service-worker.js");
-      });
-  }
-}
-
-// ==========================
-// PHASE 2 INIT
-// ==========================
-function initPhase2() {
-  setupInstallPrompt();
-
-  // Show install banners only on mobile
-  if (/android|iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
-    showInstallBanner();
-  }
-
-  // Show FB/Instagram warning if needed
-  showFacebookWarning();
-
-  // Drag & drop handling
-  setupDragAndDrop();
-
-  // Register service worker
-  setupServiceWorker();
-}
-
-// Final unified bootstrap
-document.addEventListener("DOMContentLoaded", () => {
-  init(); // Phase 1 (reader, categories, clear btn)
-  initPhase2(); // Phase 2 (install prompt, banners, drag/drop)
-});
-
-// ==========================
-// STATE PERSISTENCE & AUTOSAVE
-// ==========================
-function autoSaveReadingState() {
-  if (readingInterval) {
-    localStorage.setItem(LAST_POSITION_KEY, currentWord);
-    localStorage.setItem(LAST_TEXT_KEY, textInput.value);
-  }
-}
-
-function restoreSavedText() {
-  const savedText = localStorage.getItem(LAST_TEXT_KEY);
-  const savedPos = parseInt(localStorage.getItem(LAST_POSITION_KEY), 10);
-
-  if (savedText) {
-    textInput.value = savedText;
-    updateCodeView(savedText);
-
-    const resumeBtn = document.getElementById("resume-btn");
-    if (resumeBtn && !isNaN(savedPos)) {
-      resumeBtn.disabled = false;
-      resumeBtn.addEventListener("click", () => {
-        resumeReadingFromPosition(savedPos);
-      });
-    }
-  }
-}
-
-function resumeReadingFromPosition(index) {
-  const text = textInput.value.trim();
-  if (!text || isNaN(index)) {
-    alert("No saved position or text found.");
-    return;
-  }
-
-  words = text
-    .replace(/[\n\r]+/g, " ")
-    .replace(/\s+/g, " ")
-    .split(" ");
-  if (index >= words.length) {
-    alert("Saved position exceeds text length.");
-    return;
-  }
-  startReading(index);
-}
-
-// ==========================
-// GENERIC READING HANDLER
-// ==========================
-function beginReading(text, startIndex = 0) {
-  words = text
-    .replace(/[\n\r]+/g, " ")
-    .replace(/\s+/g, " ")
-    .split(" ");
-  currentWord = startIndex;
-
-  showWord(); // first chunk
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  textInput.disabled = true;
-  wpmSlider.disabled = true;
-
-  const interval = 60000 / parseInt(wpmSlider.value, 10);
-  if (readingInterval) clearInterval(readingInterval);
-
-  readingInterval = setInterval(() => {
-    currentWord += chunkSize;
-    if (currentWord >= words.length) {
-      stopReading();
-    } else {
-      showWord();
-    }
-  }, interval);
-
-  lockClearWhileReading(true);
-}
-
-// ==========================
-// MAIN START/STOP
-// ==========================
-function startReading(startIndex = 0) {
-  const text = textInput.value.trim();
-  if (!text) {
-    alert("Please enter or load text before reading.");
-    return;
-  }
-  beginReading(text, startIndex);
-}
-
-function stopReading() {
-  if (readingInterval) clearInterval(readingInterval);
-  readingInterval = null;
-
-  showFullText();
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  textInput.disabled = false;
-  wpmSlider.disabled = false;
-
-  autoSaveReadingState();
-  lockClearWhileReading(false);
-}
-
-// ==========================
-// SELECTION-BASED READING
-// ==========================
-function readSelectedText() {
-  const selStart = textInput.selectionStart;
-  const selEnd = textInput.selectionEnd;
-
-  if (selStart === selEnd) {
-    alert("Please select some text inside the text box.");
-    return;
-  }
-
-  const selectedText = textInput.value.substring(selStart, selEnd).trim();
-  if (!selectedText) {
-    alert("Selected text is empty.");
-    return;
-  }
-
-  beginReading(selectedText, 0);
-}
-
-// ==========================
-// KEYBOARD SHORTCUTS
-// ==========================
-function setupKeyboardShortcuts() {
-  document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.key === "Enter") {
-      if (!readingInterval) startReading();
-    }
-    if (e.key === "Escape") {
-      if (readingInterval) stopReading();
-    }
-  });
-}
-
-// ==========================
-// CLEAR BUTTON LOCK/UNLOCK
-// ==========================
-function lockClearWhileReading(lock) {
-  if (lock) {
-    setClearBtnState(false); // fully disable during reading
-  } else {
-    const hasText = textInput.value.trim().length > 0;
-    setClearBtnState(hasText);
-  }
-}
-
-// ==========================
-// AUTO SAVE TIMER
-// ==========================
-function setupAutoSaveTimer() {
-  setInterval(() => autoSaveReadingState(), 10000);
-}
-function initPhase3() {
-  // Restore last text & resume button state
-  restoreSavedText();
-
-  // Resume reading manually if needed
-  const resumeBtn = document.getElementById("resume-btn");
-  if (resumeBtn) {
-    resumeBtn.addEventListener("click", () => {
-      const savedIndex = parseInt(localStorage.getItem(LAST_POSITION_KEY), 10);
-      resumeReadingFromPosition(savedIndex);
-    });
-  }
-
-  // Read selection button
-  const selectionBtn = document.getElementById("read-selection-btn");
-  if (selectionBtn) {
-    selectionBtn.addEventListener("click", readSelectedText);
-  }
-
-  // Keyboard shortcuts
-  setupKeyboardShortcuts();
-
-  // Auto-save timer every 10s
-  setupAutoSaveTimer();
-}
-document.addEventListener("DOMContentLoaded", () => {
-  init(); // Phase 1 - categories, reader UI, clear btn
-  initPhase2(); // Phase 2 - install prompt, banners, drag/drop
-  initPhase3(); // Phase 3 - reading state, selection read, autosave
-});
-// ==========================
-// ASSISTIVE MODE ENHANCEMENTS
-// ==========================
-function applyAssistiveMode(enabled) {
-  assistiveMode = enabled;
-  assistiveToggle.checked = enabled;
-  readingArea.classList.toggle("assistive-active", enabled);
-  localStorage.setItem(ASSIST_MODE_KEY, JSON.stringify(enabled));
-}
-
-function toggleAssistiveMode() {
-  applyAssistiveMode(assistiveToggle.checked);
-}
-
-// Smooth scroll centering for assistive mode
-function centerHighlightedWord() {
-  if (!assistiveMode) return;
-  readingArea.scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
-// Override `showWord()` to include smooth scroll
-const originalShowWord = showWord;
-showWord = function () {
-  originalShowWord();
-  centerHighlightedWord();
-};
-
-// ==========================
-// FEEDBACK HELPERS
-// ==========================
-function showToast(message, type = "info") {
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-
-  document.body.appendChild(toast);
-
-  // Animate + auto-remove
-  setTimeout(() => toast.classList.add("visible"), 50);
-  setTimeout(() => {
-    toast.classList.remove("visible");
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
-
-// ==========================
-// CATEGORY / DOC REFRESH OPTIMIZATION
-// ==========================
-let categoryRenderPending = false;
-function scheduleCategoryRender() {
-  if (!categoryRenderPending) {
-    categoryRenderPending = true;
-    requestAnimationFrame(() => {
-      renderCategories();
-      categoryRenderPending = false;
-    });
-  }
-}
-
-let docRenderPending = false;
-function scheduleRecentDocRender() {
-  if (!docRenderPending) {
-    docRenderPending = true;
-    requestAnimationFrame(() => {
-      filterDocumentsByCategory(categoryFilter.value);
-      docRenderPending = false;
-    });
-  }
-}
-
-// Hook into save/remove to avoid redundant re-renders
-const originalSaveRecentDocs = saveRecentDocs;
-saveRecentDocs = function () {
-  localStorage.setItem(RECENT_DOCS_KEY, JSON.stringify(recentDocs));
-  scheduleRecentDocRender(); // optimize re-render
-};
-
-// ==========================
-// FILE LOAD IMPROVEMENTS
-// ==========================
-function loadFileIntoReader(file) {
-  if (!file.type.startsWith("text/")) {
-    showToast("❌ Please upload a text file.", "error");
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    const content = evt.target.result;
-    textInput.value = content;
-    updateCodeView(content);
-    saveRecentDoc(content);
-    showToast("✅ File loaded successfully!", "success");
-  };
-  reader.readAsText(file);
-}
-
-// Replace old handler
-fileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) loadFileIntoReader(file);
-  fileInput.value = "";
-});
-
-// Drag-drop uses same handler
-function handleDroppedFile(file) {
-  loadFileIntoReader(file);
-}
-
-// ==========================
-// MOBILE SAFETY: DISMISS BANNERS
-// ==========================
-function dismissInstallBanner(banner) {
-  banner.remove();
-  localStorage.setItem("installPromptDismissed", "true");
-}
-
-// Auto-dismiss banners with animation
-function autoHideBanner(banner, delay = 10000) {
-  setTimeout(() => {
-    banner.classList.add("fade-out");
-    setTimeout(() => banner.remove(), 500);
-  }, delay);
-}
-
-// ==========================
-// IMPROVED INSTALL PROMPT
-// ==========================
-function showInstallPrompt() {
-  if (isInStandaloneMode() || localStorage.getItem("installPromptDismissed"))
-    return;
-
-  const banner = document.createElement("div");
-  banner.classList.add("install-banner");
-
-  const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  banner.innerHTML = isIOS
-    ? `📲 Add to Home Screen:<br>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>`
-    : `📲 Install this app:<br>Tap <strong>Menu ⋮</strong> → <strong>Add to Home Screen</strong>`;
-
-  const closeBtn = document.createElement("button");
-  closeBtn.classList.add("banner-close");
-  closeBtn.textContent = "×";
-  closeBtn.addEventListener("click", () => dismissInstallBanner(banner));
-
-  banner.appendChild(closeBtn);
-  document.body.appendChild(banner);
-
-  autoHideBanner(banner, 10000);
-}
-
-// ==========================
-// SAFETY: FACEBOOK BROWSER WARNING
-// ==========================
-function showFacebookWarning() {
-  if (!isFacebookBrowser()) return;
-
-  const banner = document.createElement("div");
-  banner.classList.add("fb-warning");
-  banner.innerHTML = `
-    ⚠️ You're using Facebook/Instagram in-app browser.<br>
-    <b>Open in Chrome/Safari</b> for best experience.`;
-
-  document.body.appendChild(banner);
-  autoHideBanner(banner, 8000);
-}
-function initPhase4() {
-  // Assistive toggle setup
-  assistiveToggle.addEventListener("change", toggleAssistiveMode);
-
-  // Restore assistive mode from storage
-  applyAssistiveMode(
-    JSON.parse(localStorage.getItem(ASSIST_MODE_KEY) || "false")
-  );
-
-  // Show install prompt if eligible
-  if (/android|iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
-    showInstallPrompt();
-  }
-
-  // Show FB browser warning if needed
-  showFacebookWarning();
-}
-document.addEventListener("DOMContentLoaded", () => {
-  init(); // Phase 1 - core setup
-  initPhase2(); // Phase 2 - install banners & drag-drop
-  initPhase3(); // Phase 3 - reading state & resume
-  initPhase4(); // Phase 4 - UX & assistive refinements
-});
-
 const darkToggle = document.createElement("button");
 darkToggle.textContent = "🌙 Dark Mode";
 darkToggle.classList.add("dark-toggle");
-darkToggle.style.position = "fixed";
-darkToggle.style.top = "20px";
-darkToggle.style.left = "20px";
-darkToggle.style.padding = "6px 10px";
-darkToggle.style.zIndex = "1000";
+Object.assign(darkToggle.style, {
+  position: "fixed",
+  top: "20px",
+  left: "20px",
+  zIndex: 1000,
+});
 document.body.appendChild(darkToggle);
 
-// Restore saved theme
 if (localStorage.getItem("darkMode") === "true") {
   document.body.classList.add("dark-mode");
   darkToggle.textContent = "☀️ Light Mode";
@@ -1055,3 +422,8 @@ darkToggle.addEventListener("click", () => {
   darkToggle.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
   localStorage.setItem("darkMode", isDark);
 });
+
+// ==========================
+// DOM Ready
+// ==========================
+document.addEventListener("DOMContentLoaded", init);

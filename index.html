@@ -49,112 +49,99 @@
   </head>
   <body>
     <div class="app-container">
-      <div class="layout">
-        <!-- ✅ Sticky Header -->
-        <header>
-          <h1>Text Reader</h1>
-        </header>
+      <header class="toolbar">
+        <h1>Text Reader</h1>
 
-        <div class="content-area">
-          <!-- ✅ MAIN SECTION -->
-          <main>
-            <!-- ✅ Toolbar with controls -->
-            <div class="toolbar">
-              <button id="paste-btn" type="button">Paste Text</button>
-              <button id="start-btn" type="button">Start Reading</button>
-              <button id="stop-btn" type="button" disabled>Stop</button>
-              <button id="resume-btn" type="button" disabled>Resume</button>
-              <button id="read-selection-btn" type="button">
-                Read From Selection
-              </button>
+        <!-- Main Controls -->
+        <button id="paste-btn" type="button">📋 Paste</button>
+        <button id="start-btn" type="button">▶️ Start</button>
+        <button id="stop-btn" type="button" disabled>⏸ Stop</button>
+        <button id="resume-btn" type="button" disabled>⏯ Resume</button>
+        <button id="read-selection-btn" type="button">
+          🔍 Read From Selection
+        </button>
 
-              <!-- Assistive Mode -->
-              <label class="assistive-toggle-group" for="assistive-toggle">
-                <input type="checkbox" id="assistive-toggle" />
-                Assistive Mode
-              </label>
+        <!-- Assistive Mode Toggle -->
+        <label class="assistive-toggle-group">
+          <input type="checkbox" id="assistive-toggle" /> Assistive Mode
+        </label>
 
-              <!-- Sliders -->
-              <div class="slider-group">
-                <label for="wpm-slider">Words per minute</label>
-                <input
-                  type="range"
-                  id="wpm-slider"
-                  min="60"
-                  max="600"
-                  value="200"
-                  step="10"
-                />
-                <div class="slider-value" id="wpm-value">200</div>
-              </div>
+        <!-- File loader -->
+        <label for="file-input" class="file-label">
+          📂 Load File
+          <input
+            type="file"
+            id="file-input"
+            accept=".txt"
+            style="display: none"
+          />
+        </label>
+      </header>
 
-              <div class="slider-group">
-                <label for="chunk-slider">Words per chunk</label>
-                <input
-                  type="range"
-                  id="chunk-slider"
-                  min="1"
-                  max="10"
-                  value="1"
-                  step="1"
-                />
-                <div class="slider-value" id="chunk-value">1</div>
-              </div>
+      <main>
+        <!-- Reading Area -->
+        <div id="reading-area" class="reading-area"></div>
 
-              <!-- File loader -->
-              <label for="file-input" class="file-label">
-                Load from file
-                <input
-                  type="file"
-                  id="file-input"
-                  accept=".txt"
-                  style="display: none"
-                />
-              </label>
-            </div>
+        <!-- Editable Text -->
+        <textarea
+          id="text-input"
+          placeholder="Paste or load your text here..."
+        ></textarea>
 
-            <!-- ✅ Reading area -->
-            <div class="reading-area" id="reading-area"></div>
+        <!-- Sliders -->
+        <section class="controls">
+          <div class="slider-group">
+            <label for="wpm-slider">Words per minute:</label>
+            <input
+              type="range"
+              id="wpm-slider"
+              min="60"
+              max="600"
+              value="200"
+              step="10"
+            />
+            <div class="slider-value" id="wpm-value">200</div>
+          </div>
 
-            <!-- ✅ Editable text -->
-            <textarea
-              id="text-input"
-              placeholder="Paste or load your text here..."
-            ></textarea>
-            <!-- Recent Documents -->
-            <section>
-              <h2>Recent Documents</h2>
-              <ul class="recent-list" id="recent-list"></ul>
-            </section>
-            <!-- ✅ Printed document after stopReading() -->
-            <div id="printed-doc"></div>
+          <div class="slider-group">
+            <label for="chunk-slider">Words per chunk:</label>
+            <input
+              type="range"
+              id="chunk-slider"
+              min="1"
+              max="10"
+              value="1"
+              step="1"
+            />
+            <div class="slider-value" id="chunk-value">1</div>
+          </div>
+        </section>
 
-            <!-- ✅ Code viewer -->
-            <section>
-              <h2>Code Viewer</h2>
-              <pre><code id="code-display" class="language-html"></code></pre>
-            </section>
-          </main>
+        <!-- Recent Documents -->
+        <section>
+          <h2>Recent Documents</h2>
+          <ul class="recent-list" id="recent-list"></ul>
+        </section>
 
-          <!-- ✅ SINGLE SIDEBAR -->
-          <aside class="sidebar">
-            <!-- Manage Categories -->
-            <section id="category-manager">
-              <h3>Manage Categories</h3>
-              <input
-                type="text"
-                id="category-input"
-                placeholder="Enter category"
-              />
-              <button id="add-category-btn">Add Category</button>
-              <select id="category-filter">
-                <option value="">All Categories</option>
-              </select>
-              <ul id="category-list"></ul>
-            </section>
-          </aside>
-        </div>
-      </div>
+        <!-- Code Viewer -->
+        <section>
+          <h2>Code Viewer</h2>
+          <pre><code id="code-display" class="language-html"></code></pre>
+        </section>
+      </main>
+
+      <!-- Sidebar for Categories -->
+      <aside class="sidebar">
+        <section id="category-manager">
+          <h3>Manage Categories</h3>
+          <input type="text" id="category-input" placeholder="Enter category" />
+          <button id="add-category-btn">➕ Add Category</button>
+          <select id="category-filter">
+            <option value="">All Categories</option>
+          </select>
+          <ul id="category-list"></ul>
+        </section>
+      </aside>
     </div>
 
     <!-- ✅ Scripts -->
