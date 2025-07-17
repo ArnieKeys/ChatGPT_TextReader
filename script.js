@@ -20,6 +20,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const categoryList = document.getElementById("category-list");
   const clearAllBtn = document.getElementById("clear-all-btn");
 
+  let recentDocs = JSON.parse(localStorage.getItem("recentDocs") || "[]");
+  let categories = JSON.parse(localStorage.getItem("categories") || "[]");
+
   /* === Dark Mode Toggle === */
   const header = document.querySelector("header");
   const darkToggle = document.createElement("button");
@@ -32,9 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentIndex = 0;
   let readingTimer = null;
   let state = "stopped"; // 'stopped', 'reading', 'paused'
-
-  let recentDocs = JSON.parse(localStorage.getItem("recentDocs") || "[]");
-  let categories = JSON.parse(localStorage.getItem("categories") || "[]");
 
   /* === Utility: Toast Notifications === */
   const showToast = (msg, type = "info") => {
@@ -274,13 +274,17 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsText(file);
   });
 
-  wpmSlider.addEventListener("input", () => {
-    wpmValue.textContent = wpmSlider.value;
-  });
-
-  chunkSlider.addEventListener("input", () => {
-    chunkValue.textContent = chunkSlider.value;
-  });
+  /* === Safe slider value update === */
+  if (wpmSlider && wpmValue) {
+    wpmSlider.addEventListener("input", () => {
+      wpmValue.textContent = wpmSlider.value;
+    });
+  }
+  if (chunkSlider && chunkValue) {
+    chunkSlider.addEventListener("input", () => {
+      chunkValue.textContent = chunkSlider.value;
+    });
+  }
 
   addCategoryBtn.addEventListener("click", () => {
     const cat = categoryInput.value.trim();
