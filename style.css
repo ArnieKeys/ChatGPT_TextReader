@@ -433,7 +433,16 @@ body.dark-mode #category-list li:hover {
 }
 
 #reading-area {
-  white-space: pre-wrap; /* keep layout stable */
-  font-family: inherit;
+  padding: 1rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  background: #fff;
+  border: 1px solid #ddd;
   min-height: 200px;
+  overflow-y: auto;
+  transition: background 0.3s ease;
+
+  /* ✅ allow wrapping but preserve line breaks */
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
