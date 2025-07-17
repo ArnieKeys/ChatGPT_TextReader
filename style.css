@@ -372,7 +372,7 @@ body.dark-mode .category-label {
   color: #aaa;
 }
 
-body.dark-mode .file-label {
+body.dark-mode label.file-label {
   color: #2d2d2d;
 }
 
