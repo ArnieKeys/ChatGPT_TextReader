@@ -1,429 +1,309 @@
-// ==========================
-// Element References
-// ==========================
-const $ = (id) => document.getElementById(id);
+document.addEventListener("DOMContentLoaded", () => {
+  /* === DOM ELEMENTS === */
+  const readingArea = document.getElementById("reading-area");
+  const textInput = document.getElementById("text-input");
+  const pasteBtn = document.getElementById("paste-btn");
+  const startBtn = document.getElementById("start-btn");
+  const stopBtn = document.getElementById("stop-btn");
+  const resumeBtn = document.getElementById("resume-btn");
+  const readSelectionBtn = document.getElementById("read-selection-btn");
 
-const textInput = $("text-input");
-const fileInput = $("file-input");
-const pasteBtn = $("paste-btn");
-const startBtn = $("start-btn");
-const stopBtn = $("stop-btn");
-const readingArea = $("reading-area");
-const wpmSlider = $("wpm-slider");
-const wpmValue = $("wpm-value");
-const chunkSlider = $("chunk-slider");
-const chunkValue = $("chunk-value");
-const assistiveToggle = $("assistive-toggle");
-const recentList = $("recent-list");
-const codeDisplay = $("code-display");
-const categoryInput = $("category-input");
-const addCategoryBtn = $("add-category-btn");
-const categoryFilter = $("category-filter");
-const categoryList = $("category-list");
+  const wpmSlider = document.getElementById("wpm-slider");
+  const chunkSlider = document.getElementById("chunk-slider");
+  const wpmValue = document.getElementById("wpm-value");
+  const chunkValue = document.getElementById("chunk-value");
+  const assistiveToggle = document.getElementById("assistive-toggle");
 
-// ==========================
-// Constants
-// ==========================
-const LAST_POSITION_KEY = "text_reader_last_position";
-const LAST_TEXT_KEY = "text_reader_last_text";
-const ASSIST_MODE_KEY = "text_reader_assistive_mode";
-const RECENT_DOCS_KEY = "text_reader_recent_docs";
-const CATEGORIES_KEY = "text_reader_categories";
+  const recentList = document.getElementById("recent-list");
+  const fileInput = document.getElementById("file-input");
 
-// ==========================
-// State
-// ==========================
-let words = [],
-  currentWord = 0;
-let readingInterval = null;
-let isPaused = false;
-let assistiveMode = false;
-let chunkSize = 1;
-let recentDocs = JSON.parse(localStorage.getItem(RECENT_DOCS_KEY) || "[]");
-let categories = JSON.parse(localStorage.getItem(CATEGORIES_KEY) || "[]");
+  const addCategoryBtn = document.getElementById("add-category-btn");
+  const categoryInput = document.getElementById("category-input");
+  const categoryList = document.getElementById("category-list");
+  const categoryFilter = document.getElementById("category-filter");
 
-// ==========================
-// Utility Functions
-// ==========================
-const escapeHtml = (str) => {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-};
+  /* === STATE === */
+  let words = [];
+  let currentIndex = 0;
+  let readingTimer = null;
+  let isPaused = false; // FIX for resume button
+  let toastLock = false; // Prevent duplicate alerts
 
-const showToast = (msg, type = "info") => {
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.classList.add("visible"), 50);
-  setTimeout(() => {
-    toast.classList.remove("visible");
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-};
+  let recentDocs = JSON.parse(localStorage.getItem("recentDocs") || "[]");
+  let categories = JSON.parse(localStorage.getItem("categories") || "[]");
 
-const updateCodeView = (text) => {
-  if (!codeDisplay) return;
-  codeDisplay.innerHTML = escapeHtml(text);
-  if (typeof Prism !== "undefined") Prism.highlightElement(codeDisplay);
-};
+  /* === UTILITIES === */
+  const showToast = (message, type = "info") => {
+    if (toastLock) return; // prevent spamming
+    toastLock = true;
 
-// ==========================
-// Reading Controls
-// ==========================
-function showWord() {
-  const chunk = words.slice(currentWord, currentWord + chunkSize).join(" ");
-  readingArea.innerHTML = `<span class="highlight">${chunk}</span>`;
-  if (assistiveMode)
-    readingArea.scrollIntoView({ behavior: "smooth", block: "center" });
-}
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type} visible`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
 
-function beginReading(text, index = 0) {
-  words = text.trim().replace(/\s+/g, " ").split(" ");
-  currentWord = index;
-  showWord();
-  const interval = 60000 / parseInt(wpmSlider.value, 10);
-  readingInterval = setInterval(() => {
-    currentWord += chunkSize;
-    if (currentWord >= words.length) stopReading();
-    else showWord();
-  }, interval);
-  lockClearWhileReading(true);
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-}
-
-function startReading(startIndex = 0) {
-  const text = textInput.value.trim();
-  if (!text) return alert("Please enter or load text before reading.");
-  beginReading(text, startIndex);
-}
-
-function stopReading() {
-  clearInterval(readingInterval);
-  readingInterval = null;
-  readingArea.textContent = textInput.value;
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  autoSaveReadingState();
-  lockClearWhileReading(false);
-}
-
-// ==========================
-// Clear Button
-// ==========================
-const clearBtn = document.createElement("button");
-clearBtn.textContent = "🧹 Clear All";
-clearBtn.classList.add("clear-btn");
-clearBtn.disabled = true;
-document.body.appendChild(clearBtn);
-
-clearBtn.addEventListener("click", () => {
-  if (!confirm("⚠️ Clear all text?")) return;
-  stopReading();
-  textInput.value = "";
-  readingArea.textContent = "";
-  updateCodeView("");
-  words = [];
-  currentWord = 0;
-  localStorage.removeItem(LAST_TEXT_KEY);
-  localStorage.removeItem(LAST_POSITION_KEY);
-  setClearBtnState(false);
-});
-
-function setClearBtnState(enabled) {
-  clearBtn.disabled = !enabled;
-  clearBtn.classList.toggle("active", enabled);
-}
-
-function lockClearWhileReading(lock) {
-  setClearBtnState(!lock && textInput.value.trim().length > 0);
-}
-
-function enableClearIfNeeded() {
-  setClearBtnState(textInput.value.trim().length > 0);
-}
-
-// ==========================
-// Category Functions
-// ==========================
-function refreshCategoriesUI() {
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-  renderCategories();
-}
-
-function renderCategories() {
-  categoryFilter.innerHTML = `<option value="">All Categories</option>`;
-  categories.forEach((cat) => {
-    const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    categoryFilter.appendChild(opt);
-  });
-
-  categoryList.innerHTML = "";
-  categories.forEach((cat) => {
-    const li = document.createElement("li");
-    li.textContent = cat;
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "✖";
-    delBtn.addEventListener("click", () => {
-      categories = categories.filter((c) => c !== cat);
-      refreshCategoriesUI();
-      showToast(`🗑️ Deleted category "${cat}"`, "info");
-    });
-    li.appendChild(delBtn);
-    categoryList.appendChild(li);
-  });
-}
-
-// ==========================
-// Document Management
-// ==========================
-function saveRecentDocs() {
-  localStorage.setItem(RECENT_DOCS_KEY, JSON.stringify(recentDocs));
-  filterDocumentsByCategory(categoryFilter.value);
-}
-
-function saveRecentDoc(text) {
-  const category = categoryFilter.value || "Uncategorized";
-  const doc = { text, ts: Date.now(), category };
-  recentDocs = recentDocs.filter((d) => d.text !== text);
-  recentDocs.unshift(doc);
-  saveRecentDocs();
-}
-
-function removeRecentDoc(index) {
-  recentDocs.splice(index, 1);
-  saveRecentDocs();
-}
-
-function renderRecentDocs(docs = recentDocs) {
-  recentList.innerHTML = "";
-  if (docs.length === 0) {
-    recentList.innerHTML = "<li>No documents found</li>";
-    return;
-  }
-
-  docs.forEach((doc, i) => {
-    const li = document.createElement("li");
-    const title = document.createElement("span");
-    title.textContent = doc.text.slice(0, 40) + "...";
-    title.classList.add("doc-title");
-    title.addEventListener("click", () => {
-      textInput.value = doc.text;
-      updateCodeView(doc.text);
-      enableClearIfNeeded();
-    });
-
-    const cat = document.createElement("span");
-    cat.classList.add("category-label");
-    cat.textContent = `(${doc.category})`;
-
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "Delete";
-    delBtn.addEventListener("click", () => removeRecentDoc(i));
-
-    const saveBtn = document.createElement("button");
-    saveBtn.textContent = "Save to Category";
-    saveBtn.addEventListener("click", () => {
-      let cat = prompt("Enter category name:");
-      if (!cat) return showToast("⚠️ No category entered", "error");
-      if (!categories.includes(cat)) {
-        categories.push(cat);
-        refreshCategoriesUI();
-      }
-      doc.category = cat;
-      saveRecentDocs();
-      showToast(`📂 Saved to "${cat}"`, "success");
-    });
-
-    const btns = document.createElement("div");
-    btns.className = "doc-buttons";
-    btns.append(saveBtn, delBtn);
-
-    li.append(title, cat, btns);
-    recentList.appendChild(li);
-  });
-}
-
-function filterDocumentsByCategory(cat) {
-  const docs = cat
-    ? recentDocs.filter((doc) => doc.category === cat)
-    : recentDocs;
-  renderRecentDocs(docs);
-}
-
-// ==========================
-// File Handling
-// ==========================
-fileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    textInput.value = evt.target.result;
-    updateCodeView(evt.target.result);
-    saveRecentDoc(evt.target.result);
-    enableClearIfNeeded();
+    setTimeout(() => {
+      toast.classList.remove("visible");
+      setTimeout(() => {
+        toast.remove();
+        toastLock = false; // unlock after removal
+      }, 300);
+    }, 2000);
   };
-  reader.readAsText(file);
-  fileInput.value = "";
-});
 
-// ==========================
-// Clipboard / Drag & Drop
-// ==========================
-pasteBtn.addEventListener("click", async () => {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (text) {
+  const saveState = () => {
+    localStorage.setItem("recentDocs", JSON.stringify(recentDocs));
+    localStorage.setItem("categories", JSON.stringify(categories));
+  };
+
+  const renderRecentDocs = () => {
+    recentList.innerHTML = "";
+    const filter = categoryFilter.value;
+
+    const filteredDocs = filter
+      ? recentDocs.filter((doc) => doc.category === filter)
+      : recentDocs;
+
+    filteredDocs.forEach((doc, index) => {
+      const li = document.createElement("li");
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "doc-title";
+      titleSpan.textContent = doc.title;
+
+      titleSpan.addEventListener("click", () => {
+        textInput.value = doc.content;
+        showToast(`Loaded: ${doc.title}`, "info");
+      });
+
+      const categoryLabel = document.createElement("span");
+      categoryLabel.className = "category-label";
+      categoryLabel.textContent = doc.category || "Uncategorized";
+
+      const btnGroup = document.createElement("div");
+      btnGroup.className = "doc-buttons";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "save-btn";
+      saveBtn.textContent = "Save to Category";
+      saveBtn.addEventListener("click", () => {
+        const catName = prompt("Enter a category name:");
+        const cleanName = catName ? catName.trim() : "";
+        if (!cleanName) {
+          showToast("Category name required", "error");
+          return;
+        }
+        doc.category = cleanName;
+        if (!categories.includes(cleanName)) {
+          categories.push(cleanName);
+          renderCategories();
+        }
+        saveState();
+        renderRecentDocs();
+        showToast(`Saved to: ${cleanName}`, "success");
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "delete-btn";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", () => {
+        recentDocs.splice(index, 1);
+        saveState();
+        renderRecentDocs();
+        showToast("Deleted", "info");
+      });
+
+      btnGroup.appendChild(saveBtn);
+      btnGroup.appendChild(delBtn);
+
+      li.appendChild(titleSpan);
+      li.appendChild(categoryLabel);
+      li.appendChild(btnGroup);
+      recentList.appendChild(li);
+    });
+  };
+
+  const renderCategories = () => {
+    categoryFilter.innerHTML = '<option value="">All Categories</option>';
+    categoryList.innerHTML = "";
+
+    categories.forEach((cat) => {
+      const option = document.createElement("option");
+      option.value = cat;
+      option.textContent = cat;
+      categoryFilter.appendChild(option);
+
+      const li = document.createElement("li");
+      li.textContent = cat;
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "X";
+      delBtn.addEventListener("click", () => {
+        categories = categories.filter((c) => c !== cat);
+        recentDocs = recentDocs.map((doc) =>
+          doc.category === cat ? { ...doc, category: "" } : doc
+        );
+        saveState();
+        renderCategories();
+        renderRecentDocs();
+        showToast("Category removed", "info");
+      });
+      li.appendChild(delBtn);
+      categoryList.appendChild(li);
+    });
+  };
+
+  /* === READING LOGIC === */
+  const startReading = () => {
+    const text = textInput.value.trim();
+    if (!text) {
+      showToast("Please enter or load text", "error");
+      return;
+    }
+    words = text.split(/\s+/);
+    currentIndex = 0;
+    isPaused = false;
+    runReading();
+    toggleButtons(true);
+  };
+
+  const runReading = () => {
+    clearInterval(readingTimer);
+
+    const wpm = parseInt(wpmSlider.value, 10);
+    const chunkSize = parseInt(chunkSlider.value, 10);
+    const interval = (60 / wpm) * 1000 * chunkSize;
+
+    readingTimer = setInterval(() => {
+      if (currentIndex >= words.length) {
+        stopReading();
+        return;
+      }
+
+      const chunk = words
+        .slice(currentIndex, currentIndex + chunkSize)
+        .join(" ");
+      currentIndex += chunkSize;
+
+      const before = words.slice(0, currentIndex - chunkSize).join(" ");
+      const after = words.slice(currentIndex).join(" ");
+
+      readingArea.innerHTML = `${before} <span class="highlight">${chunk}</span> ${after}`;
+
+      if (assistiveToggle.checked) {
+        readingArea.classList.add("assistive-active");
+      } else {
+        readingArea.classList.remove("assistive-active");
+      }
+    }, interval);
+  };
+
+  const stopReading = () => {
+    clearInterval(readingTimer);
+    isPaused = false;
+    toggleButtons(false);
+    readingArea.innerHTML = textInput.value;
+  };
+
+  const resumeReading = () => {
+    if (!words.length || !isPaused) {
+      showToast("Nothing to resume", "info");
+      return;
+    }
+    isPaused = false;
+    runReading();
+    resumeBtn.disabled = true;
+    stopBtn.disabled = false;
+    showToast("Resumed", "success");
+  };
+
+  const toggleButtons = (reading) => {
+    startBtn.disabled = reading;
+    stopBtn.disabled = !reading;
+    resumeBtn.disabled = true;
+  };
+
+  /* === FILE LOADING === */
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      textInput.value = ev.target.result;
+      showToast(`Loaded file: ${file.name}`, "success");
+    };
+    reader.readAsText(file);
+  });
+
+  /* === EVENTS === */
+  pasteBtn.addEventListener("click", async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        showToast("Clipboard is empty", "error");
+        return;
+      }
       textInput.value = text;
-      updateCodeView(text);
-      saveRecentDoc(text);
-      enableClearIfNeeded();
-    }
-  } catch {
-    alert("Clipboard access denied.");
-  }
-});
-
-function setupDragDrop() {
-  document.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    document.body.classList.add("drag-over");
-  });
-
-  document.addEventListener("dragleave", () => {
-    document.body.classList.remove("drag-over");
-  });
-
-  document.addEventListener("drop", (e) => {
-    e.preventDefault();
-    document.body.classList.remove("drag-over");
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        textInput.value = evt.target.result;
-        updateCodeView(evt.target.result);
-        saveRecentDoc(evt.target.result);
-        enableClearIfNeeded();
-      };
-      reader.readAsText(file);
+      showToast("Pasted from clipboard", "success");
+    } catch {
+      showToast("Clipboard not accessible", "error");
     }
   });
-}
 
-// ==========================
-// Assistive & State Restore
-// ==========================
-function applyAssistiveMode(enabled) {
-  assistiveMode = enabled;
-  assistiveToggle.checked = enabled;
-  readingArea.classList.toggle("assistive-active", enabled);
-  localStorage.setItem(ASSIST_MODE_KEY, JSON.stringify(enabled));
-}
+  startBtn.addEventListener("click", startReading);
+  stopBtn.addEventListener("click", () => {
+    isPaused = true;
+    clearInterval(readingTimer);
+    resumeBtn.disabled = false;
+    stopBtn.disabled = true;
+    showToast("Paused", "info");
+  });
+  resumeBtn.addEventListener("click", resumeReading);
 
-function autoSaveReadingState() {
-  if (readingInterval) {
-    localStorage.setItem(LAST_TEXT_KEY, textInput.value);
-    localStorage.setItem(LAST_POSITION_KEY, currentWord);
-  }
-}
-
-function restoreSavedText() {
-  const saved = localStorage.getItem(LAST_TEXT_KEY);
-  const pos = parseInt(localStorage.getItem(LAST_POSITION_KEY), 10);
-  if (saved) {
-    textInput.value = saved;
-    updateCodeView(saved);
-    if (!isNaN(pos)) {
-      $("resume-btn").disabled = false;
-      $("resume-btn").addEventListener("click", () => startReading(pos));
+  readSelectionBtn.addEventListener("click", () => {
+    const selection = window.getSelection().toString().trim();
+    if (!selection) {
+      showToast("No selection found", "error");
+      return;
     }
-  }
-}
-
-// ==========================
-// Init Function
-// ==========================
-function init() {
-  assistiveMode = JSON.parse(localStorage.getItem(ASSIST_MODE_KEY) || "false");
-  applyAssistiveMode(assistiveMode);
-  restoreSavedText();
-  refreshCategoriesUI();
-  renderRecentDocs();
-
-  categoryFilter.addEventListener("change", () => {
-    filterDocumentsByCategory(categoryFilter.value);
+    textInput.value = selection;
+    startReading();
   });
 
+  wpmSlider.addEventListener(
+    "input",
+    () => (wpmValue.textContent = wpmSlider.value)
+  );
+  chunkSlider.addEventListener(
+    "input",
+    () => (chunkValue.textContent = chunkSlider.value)
+  );
+
+  /* === CATEGORY MANAGEMENT === */
   addCategoryBtn.addEventListener("click", () => {
-    const cat = categoryInput.value.trim();
-    if (!cat) return showToast("⚠️ Please enter a category", "error");
-    if (!categories.includes(cat)) {
-      categories.push(cat);
-      refreshCategoriesUI();
-      showToast(`✅ Added "${cat}"`, "success");
-    } else {
-      showToast(`ℹ️ "${cat}" already exists`, "info");
+    const newCat = categoryInput.value.trim();
+    if (!newCat) {
+      showToast("Enter a category name", "error");
+      return;
+    }
+    if (!categories.includes(newCat)) {
+      categories.push(newCat);
+      saveState();
+      renderCategories();
+      showToast("Category added", "success");
     }
     categoryInput.value = "";
   });
 
-  assistiveToggle.addEventListener("change", () =>
-    applyAssistiveMode(assistiveToggle.checked)
-  );
+  categoryFilter.addEventListener("change", renderRecentDocs);
 
-  wpmSlider.addEventListener("input", () => {
-    wpmValue.textContent = wpmSlider.value;
-  });
+  /* === INIT === */
+  renderCategories();
+  renderRecentDocs();
 
-  chunkSlider.addEventListener("input", () => {
-    chunkSize = parseInt(chunkSlider.value, 10);
-    chunkValue.textContent = chunkSize;
-  });
-
-  textInput.addEventListener("input", () => {
-    if (!readingInterval) enableClearIfNeeded();
-  });
-
-  startBtn.addEventListener("click", () => startReading());
-  stopBtn.addEventListener("click", () => stopReading());
-
-  setupDragDrop();
-  setInterval(autoSaveReadingState, 10000);
-}
-
-// ==========================
-// Dark Mode Toggle
-// ==========================
-const darkToggle = document.createElement("button");
-darkToggle.textContent = "🌙 Dark Mode";
-darkToggle.classList.add("dark-toggle");
-Object.assign(darkToggle.style, {
-  position: "fixed",
-  top: "20px",
-  left: "20px",
-  zIndex: 1000,
+  /* === SERVICE WORKER === */
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("./service-worker.js")
+      .then(() => console.log("Service Worker registered"))
+      .catch(() => console.warn("Service Worker not found"));
+  }
 });
-document.body.appendChild(darkToggle);
-
-if (localStorage.getItem("darkMode") === "true") {
-  document.body.classList.add("dark-mode");
-  darkToggle.textContent = "☀️ Light Mode";
-}
-
-darkToggle.addEventListener("click", () => {
-  document.body.classList.toggle("dark-mode");
-  const isDark = document.body.classList.contains("dark-mode");
-  darkToggle.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
-  localStorage.setItem("darkMode", isDark);
-});
-
-// ==========================
-// DOM Ready
-// ==========================
-document.addEventListener("DOMContentLoaded", init);
