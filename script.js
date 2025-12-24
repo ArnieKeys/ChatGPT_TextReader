@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const stopBtn = document.getElementById("stop-btn");
   const resumeBtn = document.getElementById("resume-btn");
   const readSelectionBtn = document.getElementById("read-selection-btn");
-  const pasteBtn = document.getElementById("paste-btn");
+  // const pasteBtn = document.getElementById("paste-btn");
   const wpmSlider = document.getElementById("wpm-slider");
   const wpmValue = document.getElementById("wpm-value");
   const chunkSlider = document.getElementById("chunk-slider");
@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
         titleSpan.textContent = doc.title;
         titleSpan.className = "doc-title";
         titleSpan.addEventListener("click", () => {
-          textInput.value = doc.text;
+          // textInput.value = doc.text;
           updateCodeViewer(doc.text);
         });
 
@@ -167,6 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
     state = "paused";
     resetButtons();
   }
+  // Remove the reading area since we no longer need it
+  // const readingArea = document.getElementById("reading-area"); // Not needed anymore
 
   function startReading(fromIndex = 0) {
     if (state === "reading") {
@@ -176,14 +178,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const getSourceText = () => codeDisplay.textContent.trim();
-    // const getSourceText = () => codeDisplay.textContent || "";
-    const text = getSourceText().trim();
+    // Get text from the code viewer instead of the textarea
+    const text = codeDisplay.textContent.trim();
     if (!text) return showToast("No text to read!", "error");
 
-    if (!text) return showToast("No text to read!", "error");
-
-    words = text.split(/\s+/);
+    words = text.split(/\s+/); // Split the code text into words
     currentIndex = fromIndex;
     state = "reading";
     resetButtons();
@@ -199,7 +198,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const chunkWords = words.slice(currentIndex, currentIndex + chunkSize);
       const chunkText = chunkWords.join(" ");
 
-      readingArea.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${
+      // Update the code display with the chunk of text, highlighting the current chunk
+      codeDisplay.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${
         words.slice(0, currentIndex).join(" ") +
         ' <span class="highlight">' +
         chunkText +
@@ -213,6 +213,66 @@ document.addEventListener("DOMContentLoaded", () => {
 
     readChunk();
   }
+
+  function clearAll() {
+    if (readingTimer) clearTimeout(readingTimer);
+
+    words = [];
+    currentIndex = 0;
+    state = "stopped";
+
+    // Clear the code viewer instead of reading area
+    codeDisplay.textContent = "";
+
+    resetButtons();
+    showToast("All cleared!");
+  }
+
+  // function startReading(fromIndex = 0) {
+  //   if (state === "reading") {
+  //     stopReading();
+  //     state = "stopped";
+  //     resetButtons();
+  //     return;
+  //   }
+
+  //   const getSourceText = () => codeDisplay.textContent.trim();
+  //   // const getSourceText = () => codeDisplay.textContent || "";
+  //   const text = getSourceText().trim();
+  //   if (!text) return showToast("No text to read!", "error");
+
+  //   if (!text) return showToast("No text to read!", "error");
+
+  //   words = text.split(/\s+/);
+  //   currentIndex = fromIndex;
+  //   state = "reading";
+  //   resetButtons();
+
+  //   function readChunk() {
+  //     if (currentIndex >= words.length || state !== "reading") {
+  //       state = "stopped";
+  //       resetButtons();
+  //       return;
+  //     }
+
+  //     const chunkSize = parseInt(chunkSlider.value, 10);
+  //     const chunkWords = words.slice(currentIndex, currentIndex + chunkSize);
+  //     const chunkText = chunkWords.join(" ");
+
+  //     readingArea.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${
+  //       words.slice(0, currentIndex).join(" ") +
+  //       ' <span class="highlight">' +
+  //       chunkText +
+  //       "</span> " +
+  //       words.slice(currentIndex + chunkSize).join(" ")
+  //     }</pre>`;
+
+  //     currentIndex += chunkSize;
+  //     readingTimer = setTimeout(readChunk, getInterval());
+  //   }
+
+  //   readChunk();
+  // }
   //   <pre>
   //   <code
   //     id="code-display"
@@ -292,16 +352,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   readSelectionBtn.addEventListener("click", readFromSelection);
 
-  pasteBtn.addEventListener("click", async () => {
-    const clip = await navigator.clipboard.readText();
-    if (clip.trim()) {
-      // textInput.value = clip.trim();
-      // updateCodeViewer(clip.trim());
-      updateCodeViewer(clip.trim());
-      saveRecentDoc("Clipboard Text", clip.trim());
-      saveRecentDoc("Clipboard Text", clip.trim());
-    }
-  });
+  // pasteBtn.addEventListener("click", async () => {
+  //   const clip = await navigator.clipboard.readText();
+  //   if (clip.trim()) {
+  //     // textInput.value = clip.trim();
+  //     // updateCodeViewer(clip.trim());
+  //     updateCodeViewer(clip.trim());
+  //     saveRecentDoc("Clipboard Text", clip.trim());
+  //     saveRecentDoc("Clipboard Text", clip.trim());
+  //   }
+  // });
 
   fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
