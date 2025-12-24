@@ -457,6 +457,10 @@
         word-wrap: break-word;
       }
     </style>
+    <link
+      rel="stylesheet"
+      href="/Users/arnoldboesack/Documents/EasyCoderApp/dist/libs/prism-1.30.0/themes/prism-tomorrow.min.css"
+    />
   </head>
   <body>
     <div class="app-container">
@@ -479,7 +483,7 @@
               <button id="read-selection-btn" type="button">
                 Read Selection
               </button>
-              <button id="clear-all-btn" type="button">Clear All</button>
+              <!-- <button id="clear-all-btn" type="button">Clear All</button> -->
 
               <!-- Speed control -->
               <div class="slider-group">
@@ -559,6 +563,8 @@
     </div>
 
     <!-- ✅ Scripts -->
+    <!-- Ensure Prism is loaded before your custom scripts -->
+    <script src="/Users/arnoldboesack/Documents/EasyCoderApp/dist/libs/prism-1.30.0/prism.js "></script>
     <script src="script.js"></script>
   </body>
 </html>
