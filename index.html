@@ -5,32 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2d3e50" />
 
-    <!-- Social Metadata -->
-    <meta property="og:title" content="Text Reader - Smart Reading PWA" />
-    <meta
-      property="og:description"
-      content="Read smarter with assistive mode, categories & offline support."
-    />
-    <meta
-      property="og:url"
-      content="https://arniekeys.github.io/ChatGPT_TextReader/"
-    />
-    <meta property="og:type" content="website" />
-    <meta
-      property="og:image"
-      content="https://arniekeys.github.io/ChatGPT_TextReader/assets/social-preview.png"
-    />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Text Reader - Smart Reading PWA" />
-    <meta
-      name="twitter:description"
-      content="Read smarter with assistive mode, categories & offline support."
-    />
-    <meta
-      name="twitter:image"
-      content="https://arniekeys.github.io/ChatGPT_TextReader/assets/social-preview.png"
-    />
-
     <title>Text Reader</title>
 
     <!-- Styles -->
@@ -43,9 +17,6 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-html.min.js"></script>
-
-    <!-- PWA manifest -->
-    <link rel="manifest" href="manifest.json" />
   </head>
   <body>
     <div class="app-container">
@@ -113,12 +84,6 @@
             <!-- ✅ Reading area -->
             <div class="reading-area" id="reading-area"></div>
 
-            <!-- ✅ Editable text -->
-            <textarea
-              id="text-input"
-              placeholder="Paste or load your text here..."
-            ></textarea>
-
             <!-- ✅ Recent Documents -->
             <section>
               <h2>Recent Documents</h2>
@@ -155,10 +120,5 @@
 
     <!-- ✅ Scripts -->
     <script src="script.js"></script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service-worker.js");
-      }
-    </script>
   </body>
 </html>

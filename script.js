@@ -176,7 +176,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const text = textInput.value.trim();
+    const getSourceText = () => codeDisplay.textContent.trim();
+    // const getSourceText = () => codeDisplay.textContent || "";
+    const text = getSourceText().trim();
+    if (!text) return showToast("No text to read!", "error");
+
     if (!text) return showToast("No text to read!", "error");
 
     words = text.split(/\s+/);
@@ -209,6 +213,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     readChunk();
   }
+  //   <pre>
+  //   <code
+  //     id="code-display"
+  //     class="language-html"
+  //     contenteditable="true"
+  //     spellcheck="false">
+  //   </code>
+  // </pre>
 
   function resumeReading() {
     if (state !== "paused") return;
@@ -217,15 +229,39 @@ document.addEventListener("DOMContentLoaded", () => {
     startReading(currentIndex);
   }
 
-  function readFromSelection() {
+  // function readFromSelection() {
+  //   const selected = window.getSelection().toString().trim();
+  //   if (!selected) return showToast("No text selected!", "error");
+  //   textInput.value = selected;
+  //   updateCodeViewer(selected);
+  //   startReading(0);
+  // }
+  const readFromSelection = () => {
     const selected = window.getSelection().toString().trim();
     if (!selected) return showToast("No text selected!", "error");
-    textInput.value = selected;
-    updateCodeViewer(selected);
+
+    words = selected.split(/\s+/);
+    currentIndex = 0;
+    state = "reading";
+    resetButtons();
     startReading(0);
-  }
+  };
 
   /* === Clear All === */
+  // function clearAll() {
+  //   if (readingTimer) clearTimeout(readingTimer);
+
+  //   words = [];
+  //   currentIndex = 0;
+  //   state = "stopped";
+
+  //   textInput.value = "";
+  //   readingArea.innerHTML = "";
+  //   codeDisplay.textContent = "";
+
+  //   resetButtons();
+  //   showToast("All cleared!");
+  // }
   function clearAll() {
     if (readingTimer) clearTimeout(readingTimer);
 
@@ -233,7 +269,6 @@ document.addEventListener("DOMContentLoaded", () => {
     currentIndex = 0;
     state = "stopped";
 
-    textInput.value = "";
     readingArea.innerHTML = "";
     codeDisplay.textContent = "";
 
@@ -242,6 +277,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* === Event Listeners === */
+  codeDisplay.addEventListener("input", () => {
+    Prism.highlightElement(codeDisplay);
+  });
+
   startBtn.addEventListener("click", () => {
     if (state === "reading") stopReading();
     else startReading(currentIndex);
@@ -256,8 +295,10 @@ document.addEventListener("DOMContentLoaded", () => {
   pasteBtn.addEventListener("click", async () => {
     const clip = await navigator.clipboard.readText();
     if (clip.trim()) {
-      textInput.value = clip.trim();
+      // textInput.value = clip.trim();
+      // updateCodeViewer(clip.trim());
       updateCodeViewer(clip.trim());
+      saveRecentDoc("Clipboard Text", clip.trim());
       saveRecentDoc("Clipboard Text", clip.trim());
     }
   });
@@ -267,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      textInput.value = ev.target.result;
+      // textInput.value = ev.target.result;
       updateCodeViewer(ev.target.result);
       saveRecentDoc(file.name, ev.target.result);
     };
